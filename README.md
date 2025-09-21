@@ -12,6 +12,12 @@ walkai is an opinionated command-line tool that turns Python projects into conta
 ## Installing
 
 ```bash
+uv tool install git+https://github.com/saguirregaray1/walkai-cli
+```
+
+
+Or, you can install it like this for development:
+```bash
 uv tool install --editable .
 ```
 
