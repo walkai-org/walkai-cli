@@ -7,6 +7,8 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any
 
+import tomli_w
+
 from walkai.project import (
     ProjectConfigError,
     WalkAIProjectConfig,
@@ -63,60 +65,22 @@ def _write_heroku_project_descriptor(context: Path, packages: tuple[str, ...]) -
             f"walkai manages project.toml automatically but found one already present at {descriptor_path}. "
             "Please remove it so the build can proceed."
         )
-    document: dict[str, Any] = {}
-
     entries = [{"name": pkg, "force": True} for pkg in deduped]
 
-    document["_"] = {"schema-version": "0.2"}
-    document["com.heroku.buildpacks.deb-packages"] = {"install": entries}
+    document: dict[str, Any] = {
+        "_": {"schema-version": "0.2"},
+        "com": {
+            "heroku": {
+                "buildpacks": {
+                    "deb-packages": {
+                        "install": entries,
+                    }
+                }
+            }
+        },
+    }
 
-    descriptor_path.write_text(_dump_toml(document) + "\n")
-
-
-def _dump_toml(document: dict[str, Any]) -> str:
-    """Serialize a minimal subset of TOML for the project descriptor."""
-
-    lines: list[str] = []
-
-    def serialize_value(value: Any) -> str:
-        if isinstance(value, str):
-            escaped = value.replace("\\", "\\\\").replace('"', '\\"')
-            return f'"{escaped}"'
-        if isinstance(value, bool):
-            return "true" if value else "false"
-        if isinstance(value, (int, float)):
-            return str(value)
-        if isinstance(value, list):
-            inner = ", ".join(serialize_value(item) for item in value)
-            return f"[{inner}]"
-        if isinstance(value, dict):
-            parts = [f"{key} = {serialize_value(val)}" for key, val in value.items()]
-            return "{ " + ", ".join(parts) + " }"
-        raise ValueError(f"Unsupported TOML value type: {type(value)!r}")
-
-    def write_table(table: dict[str, Any], path: tuple[str, ...]) -> None:
-        scalar_items: list[tuple[str, Any]] = []
-        subtables: list[tuple[str, dict[str, Any]]] = []
-
-        for key, value in table.items():
-            if isinstance(value, dict):
-                subtables.append((key, value))
-            else:
-                scalar_items.append((key, value))
-
-        if path:
-            lines.append("")
-            lines.append(f"[{'.'.join(path)}]")
-
-        for key, value in scalar_items:
-            lines.append(f"{key} = {serialize_value(value)}")
-
-        for key, value in subtables:
-            write_table(value, (*path, key))
-
-    write_table(document, ())
-
-    return "\n".join(lines).lstrip("\n")
+    descriptor_path.write_text(tomli_w.dumps(document) + "\n")
 
 
 def _build_command(
