@@ -22,21 +22,11 @@ app = typer.Typer(
 )
 
 
-@app.callback()
-def cli_root(
-    _: typer.Context,
-    version: bool = typer.Option(
-        False,
-        "--version",
-        "-V",
-        help="Show the walkai version and exit.",
-    ),
-) -> None:
-    """Handle global options before any command runs."""
-
-    if version:
-        typer.echo(__version__)
-        raise typer.Exit()
+@app.command()
+def version() -> None:
+    """Print the version"""
+    typer.echo(__version__)
+    raise typer.Exit()
 
 
 @app.command()
@@ -65,7 +55,7 @@ def build(
         help="Override the env file declared in tool.walkai.",
     ),
 ) -> None:
-    """Build a container image using the pack CLI."""
+    """Build a container image from"""
 
     try:
         built_image = build_image(
