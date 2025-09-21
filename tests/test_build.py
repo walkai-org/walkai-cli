@@ -18,7 +18,6 @@ def project_factory(tmp_path: Path):
         name: str = "demo",
         entrypoint: str = "python main.py",
         os_dependencies: list[str] | None = None,
-        env_file: str | None = None,
     ) -> Path:
         project_dir = tmp_path / name
         project_dir.mkdir()
@@ -34,14 +33,8 @@ def project_factory(tmp_path: Path):
             f"os_dependencies = {deps_value}",
         ]
 
-        if env_file is not None:
-            lines.append(f'env_file = "{env_file}"')
-
         (project_dir / "pyproject.toml").write_text("\n".join(lines) + "\n")
         (project_dir / "main.py").write_text("print('hello from walkai')\n")
-
-        if env_file is not None:
-            (project_dir / env_file).write_text("FOO=bar\n")
 
         return project_dir
 
@@ -110,16 +103,6 @@ def test_build_image_rejects_existing_project_descriptor(
 
     with pytest.raises(BuildError, match="project.toml"):
         build.build_image(project_dir)
-
-
-def test_build_image_env_override_missing_file(project_factory) -> None:
-    project_dir = project_factory()
-    missing = project_dir / "missing.env"
-
-    with pytest.raises(
-        BuildError, match="Environment file"
-    ):  # message mentions missing file
-        build.build_image(project_dir, env_file_override=missing)
 
 
 def test_build_image_returns_custom_image(

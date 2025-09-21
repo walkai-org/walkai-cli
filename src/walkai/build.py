@@ -47,7 +47,7 @@ def _copy_project_sources(project: WalkAIProjectConfig, destination: Path) -> No
             shutil.copy2(item, dest)
 
     procfile = destination / "Procfile"
-    procfile.write_text(f"web: {project.entrypoint}\n")
+    procfile.write_text(f"entrypoint: {project.entrypoint}\n")
 
 
 def _write_heroku_project_descriptor(context: Path, packages: tuple[str, ...]) -> None:
@@ -87,7 +87,6 @@ def _build_command(
     image: str,
     env_variables: Iterable[tuple[str, str]],
     build_path: Path,
-    env_file: Path | None,
 ) -> list[str]:
     """Assemble the pack build command."""
 
@@ -106,17 +105,12 @@ def _build_command(
     for key, value in env_variables:
         command.extend(["--env", f"{key}={value}"])
 
-    if env_file is not None:
-        command.extend(["--env-file", str(env_file)])
-
     return command
 
 
 def build_image(
     project_dir: Path,
     image: str | None = None,
-    *,
-    env_file_override: Path | None = None,
 ) -> str:
     """Build a container image for the given project directory."""
 
@@ -126,10 +120,6 @@ def build_image(
         raise BuildError(str(exc)) from exc
 
     target_image = image or config.default_image()
-
-    env_file = env_file_override or config.env_file
-    if env_file is not None and not env_file.exists():
-        raise BuildError(f"Environment file '{env_file}' not found.")
 
     env_values: list[tuple[str, str]] = []
     with TemporaryDirectory() as build_context:
@@ -141,7 +131,6 @@ def build_image(
 
         command = _build_command(
             image=target_image,
-            env_file=env_file,
             build_path=context_path,
             env_variables=env_values,
         )

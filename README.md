@@ -28,12 +28,10 @@ Every project you build must declare a `[tool.walkai]` section inside its `pypro
 ```toml
 [tool.walkai]
 entrypoint = "python -m app.main"
-env_file = ".env.production"
 os_dependencies = ["git", "gettext", "cron"]
 ```
 
 - `entrypoint` (required) is the command that will run when the container starts.
-- `env_file` (optional) points to a file containing environment variables to pass into `pack` via `--env-file`.
 - `os_dependencies` (optional) is a list of Debian packages to install in the image.
 
 ## Commands
@@ -54,8 +52,6 @@ walkai build path/to/project --image my-api:latest
 ```
 
 
-You can provide a different env file with `--env-file` if your `pyproject.toml` specifies one you want to replace.
-
 If `--image` is omitted, walkai falls back to `walkai/<project-name>:latest`.
 
 ### Push an image
@@ -66,4 +62,3 @@ walkai push my-api:latest
 
 Reads the saved registry credentials.
 You can use this command to push any container image, not just the ones built with the tool.
-

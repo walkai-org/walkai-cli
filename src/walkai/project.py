@@ -19,13 +19,11 @@ class WalkAIProjectConfig:
         entrypoint: str,
         os_dependencies: tuple[str, ...],
         root: Path,
-        env_file: Path | None = None,
     ):
         self.project_name = project_name
         self.entrypoint = entrypoint
         self.os_dependencies = os_dependencies
         self.root = root
-        self.env_file = env_file
 
     def default_image(self) -> str:
         """Return an opinionated default image name for the project."""
@@ -75,23 +73,9 @@ def load_project_config(project_dir: Path) -> WalkAIProjectConfig:
             "The 'os_dependencies' field must be a list of strings if provided."
         )
 
-    env_file_value = walkai_section.get("env_file")
-    env_file = None
-    if env_file_value is not None:
-        if not isinstance(env_file_value, str):
-            raise ProjectConfigError(
-                "The 'env_file' field must be a string path if provided."
-            )
-        env_file = (project_dir / env_file_value).resolve()
-        if not env_file.exists():
-            raise ProjectConfigError(
-                f"Environment file declared at {env_file} does not exist."
-            )
-
     return WalkAIProjectConfig(
         project_name=project_name,
         entrypoint=entrypoint.strip(),
         os_dependencies=tuple(dep.strip() for dep in os_dependencies),
-        env_file=env_file,
         root=project_dir,
     )

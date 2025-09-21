@@ -45,15 +45,6 @@ def build(
         "-i",
         help="Name of the image to build. Defaults to walkai/<project>:latest.",
     ),
-    env_file: Path | None = typer.Option(
-        None,
-        "--env-file",
-        exists=True,
-        file_okay=True,
-        dir_okay=False,
-        resolve_path=True,
-        help="Override the env file declared in tool.walkai.",
-    ),
 ) -> None:
     """Build a container image from"""
 
@@ -61,7 +52,6 @@ def build(
         built_image = build_image(
             project_dir=path,
             image=image,
-            env_file_override=env_file,
         )
     except BuildError as exc:
         typer.secho(str(exc), err=True, fg=typer.colors.RED)
