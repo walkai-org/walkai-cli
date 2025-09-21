@@ -1,7 +1,6 @@
 """Utilities to inspect a target project's pyproject configuration."""
 
 import re
-from dataclasses import dataclass
 from pathlib import Path
 
 import tomllib
@@ -11,15 +10,22 @@ class ProjectConfigError(RuntimeError):
     """Raised when the target pyproject.toml is missing required information."""
 
 
-@dataclass(slots=True)
 class WalkAIProjectConfig:
     """Container build configuration extracted from tool.walkai."""
 
-    project_name: str
-    entrypoint: str
-    os_dependencies: tuple[str, ...]
-    env_file: Path | None
-    root: Path
+    def __init__(
+        self,
+        project_name: str,
+        entrypoint: str,
+        os_dependencies: tuple[str, ...],
+        root: Path,
+        env_file: Path | None = None,
+    ):
+        self.project_name = project_name
+        self.entrypoint = entrypoint
+        self.os_dependencies = os_dependencies
+        self.root = root
+        self.env_file = env_file
 
     def default_image(self) -> str:
         """Return an opinionated default image name for the project."""

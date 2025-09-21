@@ -2,7 +2,6 @@
 
 import os
 import textwrap
-from dataclasses import dataclass
 from pathlib import Path
 
 import tomllib
@@ -13,13 +12,13 @@ class ConfigError(RuntimeError):
     """Raised when the persisted configuration is invalid."""
 
 
-@dataclass(slots=True)
 class RegistryConfig:
     """Container registry connection information."""
 
-    url: str
-    username: str
-    password: str
+    def __init__(self, url: str, username: str, password: str) -> None:
+        self.url = url
+        self.username = username
+        self.password = password
 
 
 _CONFIG_DIR = Path(user_config_dir("walkai", "walkai"))
@@ -78,6 +77,20 @@ def save_config(config: RegistryConfig) -> Path:
         os.chmod(_CONFIG_FILE, 0o600)
 
     return _CONFIG_FILE
+
+
+def delete_config() -> bool:
+    """Delete the persisted registry configuration if it exists."""
+
+    if not _CONFIG_FILE.exists():
+        return False
+
+    try:
+        _CONFIG_FILE.unlink()
+    except OSError as exc:  # pragma: no cover - defensive guard
+        raise ConfigError(f"Failed to delete configuration file: {exc}") from exc
+
+    return True
 
 
 def normalise_registry_host(value: str) -> str:

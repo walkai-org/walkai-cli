@@ -131,16 +131,12 @@ def build_image(
     if env_file is not None and not env_file.exists():
         raise BuildError(f"Environment file '{env_file}' not found.")
 
-    is_heroku_builder = DEFAULT_BUILDER.lower().startswith("heroku/")
     env_values: list[tuple[str, str]] = []
-    if config.os_dependencies and not is_heroku_builder:
-        env_values.append(("BP_APT_PACKAGES", " ".join(config.os_dependencies)))
-
     with TemporaryDirectory() as build_context:
         context_path = Path(build_context)
         _copy_project_sources(config, context_path)
 
-        if config.os_dependencies and is_heroku_builder:
+        if config.os_dependencies:
             _write_heroku_project_descriptor(context_path, config.os_dependencies)
 
         command = _build_command(
