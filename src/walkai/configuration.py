@@ -1,11 +1,9 @@
 """Helpers for managing Walkai registry configuration."""
 
-from __future__ import annotations
-
-from dataclasses import dataclass
 import os
-from pathlib import Path
 import textwrap
+from dataclasses import dataclass
+from pathlib import Path
 
 import tomllib
 from platformdirs import user_config_dir

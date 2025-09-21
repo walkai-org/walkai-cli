@@ -1,11 +1,8 @@
 """Support for pushing images to a registry."""
-
-from __future__ import annotations
-
 import subprocess
 from typing import Literal
 
-from .configuration import RegistryConfig, normalise_registry_host
+from walkai.configuration import RegistryConfig, normalise_registry_host
 
 
 class PushError(RuntimeError):
@@ -38,14 +35,20 @@ def push_image(
         _tag(client, local_image, remote_ref)
         _push(client, remote_ref)
     except subprocess.CalledProcessError as exc:
-        raise PushError(f"{client} command failed with exit code {exc.returncode}.") from exc
+        raise PushError(
+            f"{client} command failed with exit code {exc.returncode}."
+        ) from exc
     except FileNotFoundError as exc:  # pragma: no cover - depends on environment
-        raise PushError(f"The '{client}' CLI is not installed or not present in PATH.") from exc
+        raise PushError(
+            f"The '{client}' CLI is not installed or not present in PATH."
+        ) from exc
 
     return remote_ref
 
 
-def _compose_remote_ref(local: str, registry: str, repository: str | None) -> tuple[str, str]:
+def _compose_remote_ref(
+    local: str, registry: str, repository: str | None
+) -> tuple[str, str]:
     host, _, namespace = registry.partition("/")
     if not host:
         raise PushError("Registry host is missing from the configured URL.")
@@ -60,7 +63,14 @@ def _compose_remote_ref(local: str, registry: str, repository: str | None) -> tu
 
 
 def _login(client: ContainerClient, registry_host: str, config: RegistryConfig) -> None:
-    command = [client, "login", registry_host, "--username", config.username, "--password-stdin"]
+    command = [
+        client,
+        "login",
+        registry_host,
+        "--username",
+        config.username,
+        "--password-stdin",
+    ]
     subprocess.run(command, check=True, input=config.password, text=True)
 
 

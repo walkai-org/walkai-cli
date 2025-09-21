@@ -30,7 +30,7 @@ os_dependencies = ["git", "gettext", "cron"]
 
 - `entrypoint` (required) is the command that will run when the container starts. walkai writes this to a `Procfile` for the buildpacks to pick up.
 - `env_file` (optional) points to a file containing environment variables to pass into `pack` via `--env-file`.
-- `os_dependencies` (optional) is a list of packages that the Paketo APT buildpack should install via the `BP_APT_PACKAGES` environment variable.
+- `os_dependencies` (optional) is a list of Debian packages to install in the image. With the default Heroku builder walkai writes these into `project.toml`; when you swap to a Paketo builder walkai passes the same list to the APT buildpack via `BP_APT_PACKAGES`.
 
 ## Commands
 
@@ -49,9 +49,8 @@ The credentials are stored in `~/.config/walkai/config.toml` (permissions tighte
 walkai build path/to/project --image my-api:latest
 ```
 
-- Uses Paketo's `gcr.io/paketo-buildpacks/builder:base` builder by default.
-- The Python version requested from the buildpack defaults to `3.11.x`; override with `--python-version`.
-- Override the buildpack builder with `--builder`.
+- Uses Heroku's `heroku/builder:24` builder under the hood.
+- Installs OS dependencies declared in `[tool.walkai].os_dependencies` by updating the Heroku `project.toml` descriptor (entries are written with `force = true` so binaries are always available).
 - Provide a different env file with `--env-file` if your `pyproject.toml` specifies one you want to replace.
 
 If `--image` is omitted, walkai falls back to `walkai/<project-name>:latest`.

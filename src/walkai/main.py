@@ -1,15 +1,19 @@
 """walkai CLI entry point implemented with Typer."""
 
-from __future__ import annotations
-
 from pathlib import Path
 
 import typer
 
+from walkai.build import BuildError, build_image
+from walkai.configuration import (
+    ConfigError,
+    RegistryConfig,
+    load_config,
+    save_config,
+)
+from walkai.push import PushError, push_image
+
 from . import __version__
-from .build import DEFAULT_BUILDER, DEFAULT_PYTHON_VERSION, BuildError, build_image
-from .configuration import ConfigError, RegistryConfig, load_config, save_config
-from .push import PushError, push_image
 
 app = typer.Typer(
     help="Opinionated tooling to build and push Python apps for Kubernetes."
@@ -49,16 +53,6 @@ def build(
         "-i",
         help="Name of the image to build. Defaults to walkai/<project>:latest.",
     ),
-    builder: str = typer.Option(
-        DEFAULT_BUILDER,
-        "--builder",
-        help="pack builder image to use when creating the container.",
-    ),
-    python_version: str = typer.Option(
-        DEFAULT_PYTHON_VERSION,
-        "--python-version",
-        help="Python version to request from the buildpack (e.g. 3.11.x).",
-    ),
     env_file: Path | None = typer.Option(
         None,
         "--env-file",
@@ -75,8 +69,6 @@ def build(
         built_image = build_image(
             project_dir=path,
             image=image,
-            builder=builder,
-            python_version=python_version,
             env_file_override=env_file,
         )
     except BuildError as exc:
@@ -161,7 +153,5 @@ def push(
     typer.secho(f"Image pushed to {remote_ref}", fg=typer.colors.GREEN)
 
 
-def main() -> None:  # pragma: no cover - thin wrapper for console scripts
-    """Expose Typer's app() call for the console script."""
-
+if __name__ == "__main__":
     app()

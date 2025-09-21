@@ -1,10 +1,8 @@
 """Utilities to inspect a target project's pyproject configuration."""
 
-from __future__ import annotations
-
+import re
 from dataclasses import dataclass
 from pathlib import Path
-import re
 
 import tomllib
 
@@ -26,7 +24,7 @@ class WalkAIProjectConfig:
     def default_image(self) -> str:
         """Return an opinionated default image name for the project."""
 
-        sanitized = re.sub(r"[^a-z0-9_.-]+", "-", self.project_name.lower()).strip("-" )
+        sanitized = re.sub(r"[^a-z0-9_.-]+", "-", self.project_name.lower()).strip("-")
         base = sanitized or self.root.name.lower()
         return f"walkai/{base}:latest"
 
@@ -53,26 +51,36 @@ def load_project_config(project_dir: Path) -> WalkAIProjectConfig:
         else None
     )
     if not isinstance(walkai_section, dict):
-        raise ProjectConfigError("The pyproject.toml is missing the [tool.walkai] section.")
+        raise ProjectConfigError(
+            "The pyproject.toml is missing the [tool.walkai] section."
+        )
 
     entrypoint = walkai_section.get("entrypoint")
     if not entrypoint or not isinstance(entrypoint, str):
-        raise ProjectConfigError("The [tool.walkai] section must define an 'entrypoint' string.")
+        raise ProjectConfigError(
+            "The [tool.walkai] section must define an 'entrypoint' string."
+        )
 
     os_dependencies = walkai_section.get("os_dependencies", [])
     if not isinstance(os_dependencies, list) or not all(
         isinstance(item, str) for item in os_dependencies
     ):
-        raise ProjectConfigError("The 'os_dependencies' field must be a list of strings if provided.")
+        raise ProjectConfigError(
+            "The 'os_dependencies' field must be a list of strings if provided."
+        )
 
     env_file_value = walkai_section.get("env_file")
     env_file = None
     if env_file_value is not None:
         if not isinstance(env_file_value, str):
-            raise ProjectConfigError("The 'env_file' field must be a string path if provided.")
+            raise ProjectConfigError(
+                "The 'env_file' field must be a string path if provided."
+            )
         env_file = (project_dir / env_file_value).resolve()
         if not env_file.exists():
-            raise ProjectConfigError(f"Environment file declared at {env_file} does not exist.")
+            raise ProjectConfigError(
+                f"Environment file declared at {env_file} does not exist."
+            )
 
     return WalkAIProjectConfig(
         project_name=project_name,
