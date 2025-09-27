@@ -24,30 +24,21 @@ class BuildError(RuntimeError):
 
 def _copy_project_sources(project: WalkAIProjectConfig, destination: Path) -> None:
     """Copy the project sources to the temporary build context."""
+    exclusions = {
+        ".git",
+        "__pycache__",
+        ".mypy_cache__",
+        ".pytest_cache",
+        "env",
+        ".vscode",
+        ".venv",
+    }
 
-    def ignore(
-        directory: str, names: list[str]
-    ) -> set[str]:  # pragma: no cover - passthrough
-        # Skip common directories that bloat the build context.
-        exclusions = {
-            ".git",
-            "__pycache__",
-            ".mypy_cache",
-            ".pytest_cache",
-            "env",
-            ".venv",
-        }
+    def ignore(_directory: str, names: list[str]) -> set[str]:  # pragma: no cover
         return {name for name in names if name in exclusions}
 
-    for item in project.root.iterdir():
-        dest = destination / item.name
-        if item.is_dir():
-            shutil.copytree(item, dest, dirs_exist_ok=True, ignore=ignore)
-        else:
-            shutil.copy2(item, dest)
-
-    procfile = destination / "Procfile"
-    procfile.write_text(f"entrypoint: {project.entrypoint}\n")
+    shutil.copytree(project.root, destination, dirs_exist_ok=True, ignore=ignore)
+    (destination / "Procfile").write_text(f"entrypoint: {project.entrypoint}\n")
 
 
 def _write_heroku_project_descriptor(context: Path, packages: tuple[str, ...]) -> None:
