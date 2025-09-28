@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Opinionated CLI to build and ship Python apps as Kubernetes-ready images."
 readme = "README.md"
 requires-python = ">=3.13"
-dependencies = ["platformdirs>=4.4.0", "tomli-w>=1.2.0", "typer>=0.19.1"]
+dependencies = ["platformdirs>=4.4.0", "pyyaml>=6.0.2", "tomli-w>=1.2.0", "typer>=0.19.1"]
 
 [project.scripts]
 walkai = "walkai.main:app"
