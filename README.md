@@ -36,7 +36,7 @@ gpu = 1
 - `entrypoint` (required) is the command that will run when the container starts.
 - `env_file` (optional) points to a dotenv-style file whose variables are injected into the generated Kubernetes job manifest.
 - `os_dependencies` (optional) is a list of Debian packages to install in the image. The default Heroku builder synthesises a `project.toml` describing these dependencies so the deb-packages buildpack can install them.
-- `inputs` (optional) is a list of files or directories that walkai should package into the generated input PersistentVolumeClaim before the job starts. (Large datasets may exceed Kubernetes ConfigMap size limits.)
+- `inputs` (optional) is a list of files or directories that walkai should exclude from the container image and instead package into the generated input PersistentVolumeClaim before the job starts.
 - `gpu` (optional) is a non-negative integer describing how many GPUs the generated Kubernetes job should request. When present, walkai adds a `nvidia.com/gpu` limit and a `gpu` annotation.
 
 ## Commands

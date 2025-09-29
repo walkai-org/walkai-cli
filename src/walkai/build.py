@@ -34,8 +34,28 @@ def _copy_project_sources(project: WalkAIProjectConfig, destination: Path) -> No
         ".venv",
     }
 
-    def ignore(_directory: str, names: list[str]) -> set[str]:  # pragma: no cover
-        return {name for name in names if name in exclusions}
+    excluded_children: dict[Path, set[str]] = {}
+    for input_path in project.inputs:
+        try:
+            relative = input_path.relative_to(project.root)
+        except ValueError:
+            continue
+        parent = relative.parent
+        key = parent if parent != Path(".") else Path()
+        excluded_children.setdefault(key, set()).add(relative.name)
+
+    def ignore(directory: str, names: list[str]) -> set[str]:  # pragma: no cover
+        path = Path(directory)
+        try:
+            relative_dir = path.relative_to(project.root)
+        except ValueError:
+            relative_dir = Path()
+        if relative_dir == Path("."):
+            relative_dir = Path()
+
+        excluded = set(exclusions)
+        excluded.update(excluded_children.get(relative_dir, set()))
+        return {name for name in names if name in excluded}
 
     shutil.copytree(project.root, destination, dirs_exist_ok=True, ignore=ignore)
     (destination / "Procfile").write_text(f"entrypoint: {project.entrypoint}\n")

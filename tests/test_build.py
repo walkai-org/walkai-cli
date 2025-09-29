@@ -18,6 +18,7 @@ def project_factory(tmp_path: Path):
         name: str = "demo",
         entrypoint: str = "python main.py",
         os_dependencies: list[str] | None = None,
+        inputs: dict[str, str] | None = None,
     ) -> Path:
         project_dir = tmp_path / name
         project_dir.mkdir()
@@ -33,8 +34,18 @@ def project_factory(tmp_path: Path):
             f"os_dependencies = {deps_value}",
         ]
 
+        if inputs:
+            inputs_literal = ", ".join(f'"{path}"' for path in inputs)
+            lines.append(f"inputs = [{inputs_literal}]")
+
         (project_dir / "pyproject.toml").write_text("\n".join(lines) + "\n")
         (project_dir / "main.py").write_text("print('hello from walkai')\n")
+
+        if inputs:
+            for relative_path, content in inputs.items():
+                target = project_dir / relative_path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text(content)
 
         return project_dir
 
@@ -114,3 +125,22 @@ def test_build_image_returns_custom_image(
 
     result = build.build_image(project_dir, image="custom/image:tag")
     assert result == "custom/image:tag"
+
+
+def test_build_image_excludes_declared_inputs(
+    monkeypatch: pytest.MonkeyPatch, project_factory
+) -> None:
+    project_dir = project_factory(inputs={"datasets/sample.txt": "data"})
+    (project_dir / "other.txt").write_text("keep\n")
+
+    def fake_run(cmd: list[str], *, check: bool) -> None:  # type: ignore[override]
+        path_index = cmd.index("--path") + 1
+        build_path = Path(cmd[path_index])
+        assert (build_path / "main.py").exists()
+        assert not (build_path / "datasets" / "sample.txt").exists()
+        # Ensure non-input files remain
+        assert (build_path / "other.txt").exists()
+
+    monkeypatch.setattr(build.subprocess, "run", fake_run)
+
+    build.build_image(project_dir)

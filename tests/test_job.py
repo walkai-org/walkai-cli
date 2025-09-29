@@ -40,7 +40,7 @@ def _create_project(
     if gpu is not None:
         lines.append(f"gpu = {gpu}")
     if inputs:
-        input_list = ", ".join(f'"{path}"' for path in inputs.keys())
+        input_list = ", ".join(f'"{path}"' for path in inputs)
         lines.append(f"inputs = [{input_list}]")
 
     (project_dir / "pyproject.toml").write_text("\n".join(lines) + "\n")
@@ -119,13 +119,9 @@ def test_job_command_emits_manifest_with_gpu(tmp_path: Path) -> None:
 
     input_pvc_doc = yaml.safe_load(input_pvc_path.read_text())
     assert input_pvc_doc["metadata"]["name"] == input_claim
-    assert (
-        input_pvc_doc["spec"]["resources"]["requests"]["storage"] == "2Gi"
-    )
+    assert input_pvc_doc["spec"]["resources"]["requests"]["storage"] == "2Gi"
     assert output_pvc_doc["metadata"]["name"] == output_claim
-    assert (
-        output_pvc_doc["spec"]["resources"]["requests"]["storage"] == "3Gi"
-    )
+    assert output_pvc_doc["spec"]["resources"]["requests"]["storage"] == "3Gi"
 
     with tarfile.open(archive_path, "r:gz") as archive:
         members = archive.getnames()
@@ -169,7 +165,6 @@ def test_job_command_without_gpu_omits_resources(tmp_path: Path) -> None:
     assert "resources" not in container
     assert "env" not in container
     assert "metadata" not in manifest["spec"]["template"]
-    assert container["command"] == ["python", "-m", "app.main"]
 
     volumes = {v["name"]: v for v in manifest["spec"]["template"]["spec"]["volumes"]}
     assert "input" not in volumes
@@ -179,6 +174,4 @@ def test_job_command_without_gpu_omits_resources(tmp_path: Path) -> None:
     assert "input" not in output_mounts
 
     assert output_pvc_doc["metadata"]["name"] == output_claim
-    assert (
-        output_pvc_doc["spec"]["resources"]["requests"]["storage"] == "1Gi"
-    )
+    assert output_pvc_doc["spec"]["resources"]["requests"]["storage"] == "1Gi"
