@@ -196,11 +196,18 @@ def _render_job_manifest(
             },
         )
 
+    pod_security_context: dict[str, object] = {
+        # Cloud Native Buildpack images run processes as an unprivileged user. Ensure
+        # the attached PVC is writable by aligning the pod's fsGroup with that user.
+        "fsGroup": 1000,
+    }
+
     template: dict[str, object] = {
         "spec": {
             "restartPolicy": "Never",
             "containers": [container],
             "volumes": volumes,
+            "securityContext": pod_security_context,
         }
     }
 

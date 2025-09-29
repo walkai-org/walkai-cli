@@ -79,6 +79,7 @@ walkai job path/to/project \
 ```
 
 - Generates a `batch/v1` Job and appends the output PersistentVolumeClaim to the same manifest. `/opt/output` is writable for results.
+- Sets the pod `fsGroup` to ensure the job process can write to `/opt/output` when the volume is mounted.
 - Sets `restartPolicy: Never` and `backoffLimit: 0` so jobs fail fast.
 - Use `--input-size`/`--output-size` to control the PVC storage requests (defaults to `1Gi`).
 - When `[tool.walkai].inputs` is set, the manifest includes the `/opt/input` volume, an input PVC manifest is written to `<job>-input-pvc.yaml` (override with `--pvc-output`), and a tarball of the declared paths is created (default `<job>-inputs.tgz`). Apply the input PVC manifest, mount the claim into a helper pod, and unpack the archive into `/opt/input` before launching the job.

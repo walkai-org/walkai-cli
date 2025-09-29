@@ -101,6 +101,7 @@ def test_job_command_emits_manifest_with_gpu(tmp_path: Path) -> None:
     template = manifest["spec"]["template"]
     assert template["spec"]["restartPolicy"] == "Never"
     assert template["spec"].get("initContainers") is None
+    assert template["spec"]["securityContext"]["fsGroup"] == 1000
 
     container = template["spec"]["containers"][0]
     assert container["image"] == "example/image:latest"
@@ -165,6 +166,8 @@ def test_job_command_without_gpu_omits_resources(tmp_path: Path) -> None:
     assert "resources" not in container
     assert "env" not in container
     assert "metadata" not in manifest["spec"]["template"]
+    security_context = manifest["spec"]["template"]["spec"]["securityContext"]
+    assert security_context["fsGroup"] == 1000
 
     volumes = {v["name"]: v for v in manifest["spec"]["template"]["spec"]["volumes"]}
     assert "input" not in volumes
