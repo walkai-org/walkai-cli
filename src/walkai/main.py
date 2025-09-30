@@ -137,7 +137,6 @@ def _sanitise_name(value: str, fallback: str) -> str:
         return fallback
     return candidate[:63]
 
-
 def _render_job_manifest(
     config: WalkAIProjectConfig,
     *,
@@ -166,7 +165,9 @@ def _render_job_manifest(
     }
 
     if config.gpu:
-        container["resources"] = {"limits": {"nvidia.com/gpu": config.gpu}}
+
+        resource_key = f"nvidia.com/mig-{config.gpu}"
+        container["resources"] = {"limits": {resource_key: 1}}
 
     if config.env_file:
         env_entries: list[dict[str, str]] = []
@@ -210,9 +211,6 @@ def _render_job_manifest(
             "securityContext": pod_security_context,
         }
     }
-
-    if config.gpu:
-        template["metadata"] = {"annotations": {"gpu": str(config.gpu)}}
 
     manifest: dict[str, object] = {
         "apiVersion": "batch/v1",

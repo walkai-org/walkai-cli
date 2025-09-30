@@ -20,7 +20,7 @@ class WalkAIProjectConfig:
         os_dependencies: tuple[str, ...],
         root: Path,
         env_file: Path | None = None,
-        gpu: int | None = None,
+        gpu: str | None = None,
         inputs: tuple[Path, ...] = (),
     ):
         self.project_name = project_name
@@ -93,13 +93,13 @@ def load_project_config(project_dir: Path) -> WalkAIProjectConfig:
             )
 
     gpu_value = walkai_section.get("gpu")
-    gpu: int | None = None
+    gpu: str | None = None
     if gpu_value is not None:
-        if isinstance(gpu_value, bool) or not isinstance(gpu_value, int) or gpu_value < 0:
+        if not isinstance(gpu_value, str) or not gpu_value.strip():
             raise ProjectConfigError(
-                "The 'gpu' field must be a non-negative integer if provided."
+                "The 'gpu' field must be a non-empty string if provided."
             )
-        gpu = gpu_value
+        gpu = gpu_value.strip()
 
     inputs_value = walkai_section.get("inputs", [])
     inputs: list[Path] = []

@@ -30,14 +30,14 @@ Every project you build must declare a `[tool.walkai]` section inside its `pypro
 entrypoint = "python -m app.main"
 os_dependencies = ["git", "gettext", "cron"]
 inputs = ["datasets/sample.csv"]
-gpu = 1
+gpu = "1g.10gb"
 ```
 
 - `entrypoint` (required) is the command that will run when the container starts.
 - `env_file` (optional) points to a dotenv-style file whose variables are injected into the generated Kubernetes job manifest.
 - `os_dependencies` (optional) is a list of Debian packages to install in the image. The default Heroku builder synthesises a `project.toml` describing these dependencies so the deb-packages buildpack can install them.
 - `inputs` (optional) is a list of files or directories that walkai should exclude from the container image and instead package into the generated input PersistentVolumeClaim before the job starts.
-- `gpu` (optional) is a non-negative integer describing how many GPUs the generated Kubernetes job should request. When present, walkai adds a `nvidia.com/gpu` limit and a `gpu` annotation.
+- `gpu` (optional) is a MIG profile string (for example `"1g.10gb"`). When present, walkai adds a `nvidia.com/mig-<profile>` resource limit with a value of `1`.
 
 ## Commands
 
@@ -83,5 +83,5 @@ walkai job path/to/project \
 - Sets `restartPolicy: Never` and `backoffLimit: 0` so jobs fail fast.
 - Use `--input-size`/`--output-size` to control the PVC storage requests (defaults to `1Gi`).
 - When `[tool.walkai].inputs` is set, the manifest includes the `/opt/input` volume, an input PVC manifest is written to `<job>-input-pvc.yaml` (override with `--pvc-output`), and a tarball of the declared paths is created (default `<job>-inputs.tgz`). Apply the input PVC manifest, mount the claim into a helper pod, and unpack the archive into `/opt/input` before launching the job.
-- Requests GPUs and annotates the pod template when `[tool.walkai].gpu` is configured, and injects environment variables from `[tool.walkai].env_file` if present.
+- Requests MIG-backed GPUs when `[tool.walkai].gpu` is configured, and injects environment variables from `[tool.walkai].env_file` if present.
 - Use `--output` to write the manifest to disk or omit it to stream YAML to STDOUT.

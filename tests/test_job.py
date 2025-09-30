@@ -19,7 +19,7 @@ def _create_project(
     *,
     name: str = "demo",
     entrypoint: str = "python main.py",
-    gpu: int | None = None,
+    gpu: str | None = None,
     env_vars: dict[str, str] | None = None,
     inputs: dict[str, str] | None = None,
 ) -> Path:
@@ -38,7 +38,7 @@ def _create_project(
         env_file_name = "job.env"
         lines.append(f'env_file = "{env_file_name}"')
     if gpu is not None:
-        lines.append(f"gpu = {gpu}")
+        lines.append(f'gpu = "{gpu}"')
     if inputs:
         input_list = ", ".join(f'"{path}"' for path in inputs)
         lines.append(f"inputs = [{input_list}]")
@@ -62,7 +62,7 @@ def _create_project(
 def test_job_command_emits_manifest_with_gpu(tmp_path: Path) -> None:
     project_dir = _create_project(
         tmp_path,
-        gpu=2,
+        gpu="1g.10gb",
         env_vars={"FOO": "bar", "BAR": "baz"},
         inputs={"datasets/sample.txt": "hello dataset\n"},
     )
@@ -105,8 +105,7 @@ def test_job_command_emits_manifest_with_gpu(tmp_path: Path) -> None:
 
     container = template["spec"]["containers"][0]
     assert container["image"] == "example/image:latest"
-    assert container["resources"]["limits"]["nvidia.com/gpu"] == 2
-    assert template["metadata"]["annotations"]["gpu"] == "2"
+    assert container["resources"]["limits"] == {"nvidia.com/mig-1g.10gb": 1}
     env = {item["name"]: item["value"] for item in container["env"]}
     assert env == {"FOO": "bar", "BAR": "baz"}
 
