@@ -44,11 +44,12 @@ gpu = "1g.10gb"
 ### Configure registry credentials
 
 ```bash
-walkai config --url registry.example.com --username my-user
-# You will be prompted for the password if not supplied via --password.
+walkai config --url registry.example.com --username my-user --api-url https://api.walkai.ai
+# You will be prompted for the registry password and WalkAI PAT if not supplied via
+# --password / --pat.
 ```
 
-The credentials are stored in `~/.config/walkai/config.toml`.
+The credentials and WalkAI API settings are stored in `~/.config/walkai/config.toml`.
 
 ### Build an image
 

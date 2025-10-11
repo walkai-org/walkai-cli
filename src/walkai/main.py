@@ -11,6 +11,8 @@ from walkai.build import BuildError, build_image
 from walkai.configuration import (
     ConfigError,
     RegistryConfig,
+    WalkAIAPIConfig,
+    WalkAIConfig,
     config_path,
     delete_config,
     load_config,
@@ -75,6 +77,16 @@ def config(
     password: str | None = typer.Option(
         None, "--password", "-p", help="Registry password"
     ),
+    api_url: str | None = typer.Option(
+        None,
+        "--api-url",
+        help="WalkAI API URL, e.g. https://api.walkai.ai",
+    ),
+    pat: str | None = typer.Option(
+        None,
+        "--pat",
+        help="WalkAI personal access token",
+    ),
     show_path: bool = typer.Option(
         False, "--show-path", help="Print the configuration file location."
     ),
@@ -87,7 +99,10 @@ def config(
     """Save or clear registry credentials used by the push command."""
 
     if clear:
-        if any(value is not None for value in (url, username, password)):
+        if any(
+            value is not None
+            for value in (url, username, password, api_url, pat)
+        ):
             typer.secho(
                 "Cannot combine credential options with --clear.",
                 err=True,
@@ -120,9 +135,16 @@ def config(
         username = typer.prompt("Registry username")
     if password is None:
         password = typer.prompt("Registry password", hide_input=True)
+    if api_url is None:
+        api_url = typer.prompt("WalkAI API URL")
+    if pat is None:
+        pat = typer.prompt("WalkAI personal access token", hide_input=True)
 
-    config_model = RegistryConfig(
-        url=url.strip(), username=username.strip(), password=password
+    config_model = WalkAIConfig(
+        registry=RegistryConfig(
+            url=url.strip(), username=username.strip(), password=password
+        ),
+        walkai_api=WalkAIAPIConfig(url=api_url.strip(), pat=pat),
     )
     saved_path = save_config(config_model)
 
@@ -279,7 +301,7 @@ def push(
     try:
         remote_ref = push_image(
             local_image=image,
-            config=stored_config,
+            config=stored_config.registry,
             repository=repository,
             client=normalised_client,  # type: ignore[arg-type]
         )

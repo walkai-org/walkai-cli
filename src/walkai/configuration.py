@@ -1,10 +1,11 @@
-"""Helpers for managing Walkai registry configuration."""
+"""Helpers for managing Walkai CLI configuration."""
 
 import os
 import textwrap
+import tomllib
+from dataclasses import dataclass
 from pathlib import Path
 
-import tomllib
 from platformdirs import user_config_dir
 
 
@@ -12,13 +13,29 @@ class ConfigError(RuntimeError):
     """Raised when the persisted configuration is invalid."""
 
 
+@dataclass(slots=True)
 class RegistryConfig:
     """Container registry connection information."""
 
-    def __init__(self, url: str, username: str, password: str) -> None:
-        self.url = url
-        self.username = username
-        self.password = password
+    url: str
+    username: str
+    password: str
+
+
+@dataclass(slots=True)
+class WalkAIAPIConfig:
+    """Walkai API connection information."""
+
+    url: str
+    pat: str
+
+
+@dataclass(slots=True)
+class WalkAIConfig:
+    """Full CLI configuration payload."""
+
+    registry: RegistryConfig
+    walkai_api: WalkAIAPIConfig | None = None
 
 
 _CONFIG_DIR = Path(user_config_dir("walkai", "walkai"))
@@ -31,8 +48,8 @@ def config_path() -> Path:
     return _CONFIG_FILE
 
 
-def load_config() -> RegistryConfig | None:
-    """Load the saved registry configuration, if present."""
+def load_config() -> WalkAIConfig | None:
+    """Load the saved CLI configuration, if present."""
 
     if not _CONFIG_FILE.exists():
         return None
@@ -47,7 +64,7 @@ def load_config() -> RegistryConfig | None:
         raise ConfigError("Configuration file is missing the [registry] section.")
 
     try:
-        return RegistryConfig(
+        registry_config = RegistryConfig(
             url=str(registry_section["url"]),
             username=str(registry_section["username"]),
             password=str(registry_section["password"]),
@@ -57,19 +74,50 @@ def load_config() -> RegistryConfig | None:
             f"Configuration file is missing the required field: {exc.args[0]}"
         ) from exc
 
+    walkai_section = payload.get("walkai")
+    walkai_api_config: WalkAIAPIConfig | None = None
+    if walkai_section is not None:
+        if not isinstance(walkai_section, dict):
+            raise ConfigError("Configuration file has an invalid [walkai] section.")
+        try:
+            walkai_api_config = WalkAIAPIConfig(
+                url=str(walkai_section["api_url"]),
+                pat=str(walkai_section["pat"]),
+            )
+        except KeyError as exc:  # pragma: no cover - defensive guard
+            raise ConfigError(
+                "Configuration file is missing the required field: "
+                f"walkai.{exc.args[0]}"
+            ) from exc
 
-def save_config(config: RegistryConfig) -> Path:
-    """Persist the given registry configuration to disk."""
+    return WalkAIConfig(registry=registry_config, walkai_api=walkai_api_config)
+
+
+def save_config(config: WalkAIConfig) -> Path:
+    """Persist the given CLI configuration to disk."""
 
     _CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    registry = config.registry
     content = textwrap.dedent(
         f"""
         [registry]
-        url = \"{config.url}\"
-        username = \"{config.username}\"
-        password = \"{config.password}\"
+        url = \"{registry.url}\"
+        username = \"{registry.username}\"
+        password = \"{registry.password}\"
         """
     ).strip()
+
+    if config.walkai_api is not None:
+        walkai = config.walkai_api
+        walkai_section = textwrap.dedent(
+            f"""
+
+            [walkai]
+            api_url = \"{walkai.url}\"
+            pat = \"{walkai.pat}\"
+            """
+        ).rstrip()
+        content = content + walkai_section
 
     _CONFIG_FILE.write_text(content + "\n")
 
