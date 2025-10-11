@@ -187,6 +187,4 @@ def test_cli_config_clear_errors_with_additional_options(isolated_config: Path) 
     )
 
     assert result.exit_code == 1
-    assert "Cannot combine credential options with --clear." in (
-        result.stderr or ""
-    )
+    assert "Cannot combine credential options with --clear." in (result.stderr or "")

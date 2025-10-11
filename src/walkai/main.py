@@ -4,6 +4,7 @@ import re
 import tarfile
 from pathlib import Path
 
+import httpx
 import typer
 import yaml
 
@@ -99,10 +100,7 @@ def config(
     """Save or clear registry credentials used by the push command."""
 
     if clear:
-        if any(
-            value is not None
-            for value in (url, username, password, api_url, pat)
-        ):
+        if any(value is not None for value in (url, username, password, api_url, pat)):
             typer.secho(
                 "Cannot combine credential options with --clear.",
                 err=True,
@@ -159,6 +157,7 @@ def _sanitise_name(value: str, fallback: str) -> str:
         return fallback
     return candidate[:63]
 
+
 def _render_job_manifest(
     config: WalkAIProjectConfig,
     *,
@@ -187,7 +186,6 @@ def _render_job_manifest(
     }
 
     if config.gpu:
-
         resource_key = f"nvidia.com/mig-{config.gpu}"
         container["resources"] = {"limits": {resource_key: 1}}
 
@@ -428,6 +426,96 @@ def job(
         typer.secho(f"Job manifest written to {output}", fg=typer.colors.GREEN)
     else:
         typer.echo(job_yaml)
+
+
+@app.command()
+def submit(
+    path: Path = typer.Argument(
+        Path("."),
+        exists=True,
+        file_okay=False,
+        readable=True,
+        resolve_path=True,
+        help="Project directory containing a pyproject.toml with tool.walkai settings.",
+    ),
+    image: str | None = typer.Option(
+        None,
+        "--image",
+        "-i",
+        help="Container image to submit. Defaults to walkai/<project>:latest.",
+    ),
+) -> None:
+    """Submit a job to the WalkAI API."""
+
+    try:
+        project = load_project_config(path)
+    except ProjectConfigError as exc:
+        typer.secho(str(exc), err=True, fg=typer.colors.RED)
+        raise typer.Exit(code=1) from exc
+
+    if project.gpu is None:
+        typer.secho(
+            "Project configuration must define [tool.walkai].gpu to submit a job.",
+            err=True,
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(code=1)
+
+    try:
+        cli_config = load_config()
+    except ConfigError as exc:
+        typer.secho(str(exc), err=True, fg=typer.colors.RED)
+        raise typer.Exit(code=1) from exc
+
+    if cli_config is None or cli_config.walkai_api is None:
+        typer.secho(
+            "No WalkAI API configuration found. Run 'walkai config' first.",
+            err=True,
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(code=1)
+
+    walkai_api = cli_config.walkai_api
+    assert walkai_api is not None  # narrow type for mypy
+
+    base_url = walkai_api.url.rstrip("/")
+    endpoint = f"{base_url}/jobs/"
+
+    resolved_image = image or project.default_image()
+    payload = {
+        "image": resolved_image,
+        "gpu": project.gpu,
+        "storage": project.storage,
+    }
+
+    headers = {
+        "Authorization": f"Bearer {walkai_api.pat}",
+    }
+
+    try:
+        response = httpx.post(endpoint, json=payload, headers=headers, timeout=30)
+    except httpx.RequestError as exc:
+        typer.secho(f"Failed to reach WalkAI API: {exc}", err=True, fg=typer.colors.RED)
+        raise typer.Exit(code=1) from exc
+
+    if response.status_code >= 400:
+        detail = response.text.strip() or f"HTTP {response.status_code}"
+        typer.secho(f"Job submission failed: {detail}", err=True, fg=typer.colors.RED)
+        raise typer.Exit(code=1)
+
+    job_reference: str | None = None
+    try:
+        data = response.json()
+    except ValueError:
+        typer.secho("Job submission didn't emit a response", fg=typer.colors.YELLOW)
+    job_reference = data.get("job_id")
+    pod_reference = data.get("pod")
+
+    message = "Job submitted successfully."
+    if job_reference:
+        message = f"Job submitted successfully with ID: {job_reference} and pod {pod_reference}"
+
+    typer.secho(message, fg=typer.colors.GREEN)
 
 
 if __name__ == "__main__":

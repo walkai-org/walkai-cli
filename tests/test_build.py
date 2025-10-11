@@ -1,9 +1,9 @@
 """Tests for the walkai.build helpers."""
 
+import tomllib
 from pathlib import Path
 
 import pytest
-import tomllib
 
 import walkai.build as build
 from walkai.build import BuildError
@@ -19,6 +19,7 @@ def project_factory(tmp_path: Path):
         entrypoint: str = "python main.py",
         os_dependencies: list[str] | None = None,
         inputs: dict[str, str] | None = None,
+        storage: int = 1,
     ) -> Path:
         project_dir = tmp_path / name
         project_dir.mkdir()
@@ -32,6 +33,7 @@ def project_factory(tmp_path: Path):
             "[tool.walkai]",
             f'entrypoint = "{entrypoint}"',
             f"os_dependencies = {deps_value}",
+            f"storage = {storage}",
         ]
 
         if inputs:

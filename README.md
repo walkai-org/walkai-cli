@@ -31,6 +31,7 @@ entrypoint = "python -m app.main"
 os_dependencies = ["git", "gettext", "cron"]
 inputs = ["datasets/sample.csv"]
 gpu = "1g.10gb"
+storage = 5
 ```
 
 - `entrypoint` (required) is the command that will run when the container starts.
@@ -38,6 +39,7 @@ gpu = "1g.10gb"
 - `os_dependencies` (optional) is a list of Debian packages to install in the image. The default Heroku builder synthesises a `project.toml` describing these dependencies so the deb-packages buildpack can install them.
 - `inputs` (optional) is a list of files or directories that walkai should exclude from the container image and instead package into the generated input PersistentVolumeClaim before the job starts.
 - `gpu` (optional) is a MIG profile string (for example `"1g.10gb"`). When present, walkai adds a `nvidia.com/mig-<profile>` resource limit with a value of `1`.
+- `storage` (required) is the number of Gi requested when submitting jobs to the WalkAI API.
 
 ## Commands
 
@@ -86,3 +88,11 @@ walkai job path/to/project \
 - When `[tool.walkai].inputs` is set, the manifest includes the `/opt/input` volume, an input PVC manifest is written to `<job>-input-pvc.yaml` (override with `--pvc-output`), and a tarball of the declared paths is created (default `<job>-inputs.tgz`). Apply the input PVC manifest, mount the claim into a helper pod, and unpack the archive into `/opt/input` before launching the job.
 - Requests MIG-backed GPUs when `[tool.walkai].gpu` is configured, and injects environment variables from `[tool.walkai].env_file` if present.
 - Use `--output` to write the manifest to disk or omit it to stream YAML to STDOUT.
+
+### Submit a job to WalkAI
+
+```bash
+walkai submit path/to/project --image my-api:latest
+```
+
+Reads the WalkAI API credentials stored via `walkai config` and posts the image, GPU profile, and storage request from `[tool.walkai]` to `<api-url>/jobs/`.

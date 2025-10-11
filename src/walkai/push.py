@@ -1,4 +1,5 @@
 """Support for pushing images to a registry."""
+
 import subprocess
 from typing import Literal
 

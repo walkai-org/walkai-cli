@@ -1,7 +1,5 @@
 """Tests for the Kubernetes job command."""
 
-from __future__ import annotations
-
 import os
 import tarfile
 from pathlib import Path
@@ -22,6 +20,7 @@ def _create_project(
     gpu: str | None = None,
     env_vars: dict[str, str] | None = None,
     inputs: dict[str, str] | None = None,
+    storage: int = 1,
 ) -> Path:
     project_dir = root / name
     project_dir.mkdir()
@@ -32,6 +31,7 @@ def _create_project(
         "[tool.walkai]",
         f'entrypoint = "{entrypoint}"',
         "os_dependencies = []",
+        f"storage = {storage}",
     ]
     env_file_name: str | None = None
     if env_vars:

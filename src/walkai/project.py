@@ -1,9 +1,8 @@
 """Utilities to inspect a target project's pyproject configuration."""
 
 import re
-from pathlib import Path
-
 import tomllib
+from pathlib import Path
 
 
 class ProjectConfigError(RuntimeError):
@@ -22,6 +21,7 @@ class WalkAIProjectConfig:
         env_file: Path | None = None,
         gpu: str | None = None,
         inputs: tuple[Path, ...] = (),
+        storage: int = 1,
     ):
         self.project_name = project_name
         self.entrypoint = entrypoint
@@ -30,6 +30,7 @@ class WalkAIProjectConfig:
         self.env_file = env_file
         self.gpu = gpu
         self.inputs = inputs
+        self.storage = storage
 
     def default_image(self) -> str:
         """Return an opinionated default image name for the project."""
@@ -118,6 +119,16 @@ def load_project_config(project_dir: Path) -> WalkAIProjectConfig:
                 )
             inputs.append(resolved)
 
+    storage_value = walkai_section.get("storage")
+    if storage_value is None:
+        raise ProjectConfigError(
+            "The [tool.walkai] section must define a 'storage' integer."
+        )
+    if not isinstance(storage_value, int):
+        raise ProjectConfigError("The 'storage' field must be an integer.")
+    if storage_value <= 0:
+        raise ProjectConfigError("The 'storage' field must be greater than zero.")
+
     return WalkAIProjectConfig(
         project_name=project_name,
         entrypoint=entrypoint.strip(),
@@ -126,4 +137,5 @@ def load_project_config(project_dir: Path) -> WalkAIProjectConfig:
         env_file=env_file,
         gpu=gpu,
         inputs=tuple(inputs),
+        storage=storage_value,
     )
