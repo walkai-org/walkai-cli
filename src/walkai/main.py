@@ -8,7 +8,6 @@ import typer
 from walkai.build import BuildError, build_image
 from walkai.configuration import (
     ConfigError,
-    RegistryConfig,
     WalkAIAPIConfig,
     WalkAIConfig,
     config_path,
@@ -17,7 +16,7 @@ from walkai.configuration import (
     save_config,
 )
 from walkai.project import ProjectConfigError, load_project_config
-from walkai.push import PushError, push_image
+from walkai.push import PushError, fetch_registry_credentials, push_image
 
 from . import __version__
 
@@ -66,15 +65,6 @@ def build(
 
 @app.command()
 def config(
-    url: str | None = typer.Option(
-        None, "--url", help="Registry URL, e.g. registry.example.com"
-    ),
-    username: str | None = typer.Option(
-        None, "--username", "-u", help="Registry username"
-    ),
-    password: str | None = typer.Option(
-        None, "--password", "-p", help="Registry password"
-    ),
     api_url: str | None = typer.Option(
         None,
         "--api-url",
@@ -91,13 +81,13 @@ def config(
     clear: bool = typer.Option(
         False,
         "--clear",
-        help="Delete the stored registry configuration instead of updating it.",
+        help="Delete the stored WalkAI configuration instead of updating it.",
     ),
 ) -> None:
-    """Save or clear registry credentials used by the push command."""
+    """Save or clear WalkAI API credentials used by the push/submit commands."""
 
     if clear:
-        if any(value is not None for value in (url, username, password, api_url, pat)):
+        if any(value is not None for value in (api_url, pat)):
             typer.secho(
                 "Cannot combine credential options with --clear.",
                 err=True,
@@ -112,10 +102,10 @@ def config(
             raise typer.Exit(code=1) from exc
 
         if removed:
-            typer.secho("Registry configuration deleted.", fg=typer.colors.GREEN)
+            typer.secho("WalkAI configuration deleted.", fg=typer.colors.GREEN)
         else:
             typer.secho(
-                "No registry configuration found to delete.",
+                "No WalkAI configuration found to delete.",
                 fg=typer.colors.YELLOW,
             )
 
@@ -124,26 +114,17 @@ def config(
 
         return
 
-    if url is None:
-        url = typer.prompt("Registry URL")
-    if username is None:
-        username = typer.prompt("Registry username")
-    if password is None:
-        password = typer.prompt("Registry password", hide_input=True)
     if api_url is None:
         api_url = typer.prompt("WalkAI API URL")
     if pat is None:
         pat = typer.prompt("WalkAI personal access token", hide_input=True)
 
     config_model = WalkAIConfig(
-        registry=RegistryConfig(
-            url=url.strip(), username=username.strip(), password=password
-        ),
-        walkai_api=WalkAIAPIConfig(url=api_url.strip(), pat=pat),
+        walkai_api=WalkAIAPIConfig(url=api_url.strip(), pat=pat),  # type: ignore
     )
     saved_path = save_config(config_model)
 
-    typer.secho("Registry configuration saved.", fg=typer.colors.GREEN)
+    typer.secho("WalkAI configuration saved.", fg=typer.colors.GREEN)
     if show_path:
         typer.echo(f"Location: {saved_path}")
 
@@ -151,12 +132,6 @@ def config(
 @app.command()
 def push(
     image: str = typer.Argument(..., help="Local image reference to push."),
-    repository: str | None = typer.Option(
-        None,
-        "--repository",
-        "-r",
-        help="Override the remote repository path (defaults to <registry>/<image>).",
-    ),
     client: str = typer.Option(
         "docker",
         "--client",
@@ -174,7 +149,7 @@ def push(
 
     if stored_config is None:
         typer.secho(
-            "No registry configuration found. Run 'walkai config' first.",
+            "No WalkAI configuration found. Run 'walkai config' first.",
             err=True,
             fg=typer.colors.RED,
         )
@@ -187,11 +162,13 @@ def push(
         )
         raise typer.Exit(code=1)
 
+    walkai_api = stored_config.walkai_api
+
     try:
+        credentials = fetch_registry_credentials(walkai_api)
         remote_ref = push_image(
             local_image=image,
-            config=stored_config.registry,
-            repository=repository,
+            credentials=credentials,
             client=normalised_client,  # type: ignore[arg-type]
         )
     except PushError as exc:
@@ -240,7 +217,7 @@ def submit(
         typer.secho(str(exc), err=True, fg=typer.colors.RED)
         raise typer.Exit(code=1) from exc
 
-    if cli_config is None or cli_config.walkai_api is None:
+    if cli_config is None:
         typer.secho(
             "No WalkAI API configuration found. Run 'walkai config' first.",
             err=True,
@@ -249,7 +226,6 @@ def submit(
         raise typer.Exit(code=1)
 
     walkai_api = cli_config.walkai_api
-    assert walkai_api is not None  # narrow type for mypy
 
     base_url = walkai_api.url.rstrip("/")
     endpoint = f"{base_url}/jobs/"

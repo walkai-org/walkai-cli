@@ -42,15 +42,14 @@ storage = 5
 
 ## Commands
 
-### Configure registry credentials
+### Configure WalkAI API access
 
 ```bash
-walkai config --url registry.example.com --username my-user --api-url https://api.walkai.ai
-# You will be prompted for the registry password and WalkAI PAT if not supplied via
-# --password / --pat.
+walkai config --api-url https://api.walkai.ai
+# You will be prompted for the WalkAI PAT if it is not supplied via --pat.
 ```
 
-The credentials and WalkAI API settings are stored in `~/.config/walkai/config.toml`.
+The WalkAI API settings are stored in `~/.config/walkai/config.toml`.
 
 ### Build an image
 
@@ -67,7 +66,7 @@ If `--image` is omitted, walkai falls back to `walkai/<project-name>:latest`.
 walkai push my-api:latest
 ```
 
-Reads the saved registry credentials.
+Retrieves short-lived registry credentials from the WalkAI API (`GET /registry`) using the saved PAT before pushing.
 You can use this command to push any container image, not just the ones built with the tool.
 
 ### Submit a job to WalkAI

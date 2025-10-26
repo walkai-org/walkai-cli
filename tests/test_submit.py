@@ -6,7 +6,7 @@ import pytest
 from typer.testing import CliRunner
 
 from walkai import configuration
-from walkai.configuration import RegistryConfig, WalkAIAPIConfig, WalkAIConfig
+from walkai.configuration import WalkAIAPIConfig, WalkAIConfig
 from walkai.main import app
 
 runner = CliRunner()
@@ -49,11 +49,6 @@ def test_submit_invokes_walkai_api(
 
     configuration.save_config(
         WalkAIConfig(
-            registry=RegistryConfig(
-                url="registry.example.com/team",
-                username="alice",
-                password="hunter2",
-            ),
             walkai_api=WalkAIAPIConfig(
                 url="https://api.walkai.ai",
                 pat="pat-token",
@@ -105,16 +100,6 @@ def test_submit_invokes_walkai_api(
 def test_submit_requires_api_credentials(tmp_path: Path, isolated_config: Path) -> None:
     project_dir = _create_project(tmp_path)
 
-    configuration.save_config(
-        WalkAIConfig(
-            registry=RegistryConfig(
-                url="registry.example.com/team",
-                username="alice",
-                password="secret",
-            )
-        )
-    )
-
     result = runner.invoke(app, ["submit", str(project_dir)])
 
     assert result.exit_code == 1
@@ -139,11 +124,6 @@ storage = 2
 
     configuration.save_config(
         WalkAIConfig(
-            registry=RegistryConfig(
-                url="registry.example.com/team",
-                username="alice",
-                password="secret",
-            ),
             walkai_api=WalkAIAPIConfig(
                 url="https://api.walkai.ai",
                 pat="pat-token",
