@@ -18,7 +18,6 @@ class WalkAIProjectConfig:
         entrypoint: str,
         os_dependencies: tuple[str, ...],
         root: Path,
-        env_file: Path | None = None,
         gpu: str | None = None,
         inputs: tuple[Path, ...] = (),
         storage: int = 1,
@@ -27,7 +26,6 @@ class WalkAIProjectConfig:
         self.entrypoint = entrypoint
         self.os_dependencies = os_dependencies
         self.root = root
-        self.env_file = env_file
         self.gpu = gpu
         self.inputs = inputs
         self.storage = storage
@@ -80,19 +78,6 @@ def load_project_config(project_dir: Path) -> WalkAIProjectConfig:
             "The 'os_dependencies' field must be a list of strings if provided."
         )
 
-    env_file_value = walkai_section.get("env_file")
-    env_file: Path | None = None
-    if env_file_value is not None:
-        if not isinstance(env_file_value, str):
-            raise ProjectConfigError(
-                "The 'env_file' field must be a string path if provided."
-            )
-        env_file = (project_dir / env_file_value).resolve()
-        if not env_file.exists():
-            raise ProjectConfigError(
-                f"Environment file declared at {env_file} does not exist."
-            )
-
     gpu_value = walkai_section.get("gpu")
     gpu: str | None = None
     if gpu_value is not None:
@@ -134,7 +119,6 @@ def load_project_config(project_dir: Path) -> WalkAIProjectConfig:
         entrypoint=entrypoint.strip(),
         os_dependencies=tuple(dep.strip() for dep in os_dependencies),
         root=project_dir,
-        env_file=env_file,
         gpu=gpu,
         inputs=tuple(inputs),
         storage=storage_value,
