@@ -1,6 +1,6 @@
 # walkai CLI
 
-walkai is an opinionated command-line tool that turns Python projects into container images.
+walkai is an opinionated command-line tool that turns Python projects into container images and interfaces with the walkai API.
 
 ## Prerequisites
 
@@ -45,7 +45,7 @@ storage = 5
 ### Configure WalkAI API access
 
 ```bash
-walkai config --api-url https://api.walkai.ai
+walkai config
 # You will be prompted for the WalkAI PAT if it is not supplied via --pat.
 ```
 
@@ -66,7 +66,7 @@ If `--image` is omitted, walkai falls back to `walkai/<project-name>:latest`.
 walkai push my-api:latest
 ```
 
-Retrieves short-lived registry credentials from the WalkAI API (`GET /registry`) using the saved PAT before pushing.
+Pushes an image to the walk:ai registry so the cluster can access the image.
 You can use this command to push any container image, not just the ones built with the tool.
 
 ### Submit a job to WalkAI
@@ -75,4 +75,4 @@ You can use this command to push any container image, not just the ones built wi
 walkai submit path/to/project --image my-api:latest
 ```
 
-Reads the WalkAI API credentials stored via `walkai config` and posts the image, GPU profile, and storage request from `[tool.walkai]` to `<api-url>/jobs/`.
+Reads the WalkAI API credentials stored via `walkai config` and posts the image, GPU profile, and storage request from `[tool.walkai]`, submitting a new job. 
