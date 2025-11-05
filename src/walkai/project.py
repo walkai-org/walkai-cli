@@ -70,6 +70,13 @@ def load_project_config(project_dir: Path) -> WalkAIProjectConfig:
             "The [tool.walkai] section must define an 'entrypoint' string."
         )
 
+    gpu_value = walkai_section.get("gpu")
+    gpu: str | None = None
+    if not gpu_value or not isinstance(gpu_value, str) or not gpu_value.strip():
+        raise ProjectConfigError("The 'gpu' field must be a non-empty string.")
+
+    gpu = gpu_value.strip()
+
     os_dependencies = walkai_section.get("os_dependencies", [])
     if not isinstance(os_dependencies, list) or not all(
         isinstance(item, str) for item in os_dependencies
@@ -77,15 +84,6 @@ def load_project_config(project_dir: Path) -> WalkAIProjectConfig:
         raise ProjectConfigError(
             "The 'os_dependencies' field must be a list of strings if provided."
         )
-
-    gpu_value = walkai_section.get("gpu")
-    gpu: str | None = None
-    if gpu_value is not None:
-        if not isinstance(gpu_value, str) or not gpu_value.strip():
-            raise ProjectConfigError(
-                "The 'gpu' field must be a non-empty string if provided."
-            )
-        gpu = gpu_value.strip()
 
     inputs_value = walkai_section.get("inputs", [])
     inputs: list[Path] = []

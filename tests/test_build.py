@@ -19,6 +19,7 @@ def project_factory(tmp_path: Path):
         entrypoint: str = "python main.py",
         os_dependencies: list[str] | None = None,
         inputs: dict[str, str] | None = None,
+        gpu: str = "3g.40gb",
         storage: int = 1,
     ) -> Path:
         project_dir = tmp_path / name
@@ -32,6 +33,7 @@ def project_factory(tmp_path: Path):
             f'name = "{name}"',
             "[tool.walkai]",
             f'entrypoint = "{entrypoint}"',
+            f'gpu = "{gpu}"',
             f"os_dependencies = {deps_value}",
             f"storage = {storage}",
         ]
