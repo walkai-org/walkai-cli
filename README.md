@@ -12,7 +12,7 @@ walkai is an opinionated command-line tool that turns Python projects into conta
 ## Installing
 
 ```bash
-uv tool install git+https://github.com/saguirregaray1/walkai-cli
+uv tool install git+https://github.com/walkai-org/walkai-cli
 ```
 
 
@@ -37,7 +37,7 @@ storage = 5
 - `entrypoint` (required) is the command that will run when the container starts.
 - `os_dependencies` (optional) is a list of Debian packages to install in the image. The default Heroku builder synthesises a `project.toml` describing these dependencies so the deb-packages buildpack can install them.
 - `inputs` (optional) is a list of files or directories that walkai should exclude from the container image (useful for large datasets you plan to mount separately).
-- `gpu` (optional) is a MIG profile string (for example `"1g.10gb"`). When present, walkai adds a `nvidia.com/mig-<profile>` resource limit with a value of `1`.
+- `gpu` (required) is a MIG profile string (for example `"1g.10gb"`). walkai validates that the field is present and forwards it to the WalkAI API when submitting jobs.
 - `storage` (required) is the number of Gi requested when submitting jobs to the WalkAI API.
 
 ## Commands
