@@ -32,7 +32,7 @@ def test_fetch_registry_credentials_requests_endpoint(
         def json(self) -> dict[str, str]:
             return {
                 "token": base64.b64encode(b"alice:secret").decode("utf-8"),
-                "ecr_arn": "123456789012.dkr.ecr.us-west-2.amazonaws.com/team:latest",
+                "ecr_url": "123456789012.dkr.ecr.us-west-2.amazonaws.com/team:latest",
             }
 
     def fake_get(
@@ -131,7 +131,7 @@ def test_fetch_registry_credentials_requires_all_fields(
 
     api_config = WalkAIAPIConfig(url="https://api.walkai.ai", pat="pat")
 
-    with pytest.raises(push.PushError, match="registry\\.ecr_arn"):
+    with pytest.raises(push.PushError, match="registry\\.ecr_url"):
         push.fetch_registry_credentials(api_config)
 
 

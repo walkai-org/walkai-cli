@@ -52,7 +52,7 @@ def fetch_registry_credentials(api_config: WalkAIAPIConfig) -> RegistryCredentia
 
     try:
         return RegistryCredentials(
-            url=str(payload["ecr_arn"]),
+            url=str(payload["ecr_url"]),
             username=username,
             password=password,
         )
