@@ -18,17 +18,13 @@ class WalkAIProjectConfig:
         entrypoint: str,
         os_dependencies: tuple[str, ...],
         root: Path,
-        gpu: str | None = None,
         inputs: tuple[Path, ...] = (),
-        storage: int = 1,
     ):
         self.project_name = project_name
         self.entrypoint = entrypoint
         self.os_dependencies = os_dependencies
         self.root = root
-        self.gpu = gpu
         self.inputs = inputs
-        self.storage = storage
 
     def default_image(self) -> str:
         """Return an opinionated default image name for the project."""
@@ -70,13 +66,6 @@ def load_project_config(project_dir: Path) -> WalkAIProjectConfig:
             "The [tool.walkai] section must define an 'entrypoint' string."
         )
 
-    gpu_value = walkai_section.get("gpu")
-    gpu: str | None = None
-    if not gpu_value or not isinstance(gpu_value, str) or not gpu_value.strip():
-        raise ProjectConfigError("The 'gpu' field must be a non-empty string.")
-
-    gpu = gpu_value.strip()
-
     os_dependencies = walkai_section.get("os_dependencies", [])
     if not isinstance(os_dependencies, list) or not all(
         isinstance(item, str) for item in os_dependencies
@@ -102,22 +91,10 @@ def load_project_config(project_dir: Path) -> WalkAIProjectConfig:
                 )
             inputs.append(resolved)
 
-    storage_value = walkai_section.get("storage")
-    if storage_value is None:
-        raise ProjectConfigError(
-            "The [tool.walkai] section must define a 'storage' integer."
-        )
-    if not isinstance(storage_value, int):
-        raise ProjectConfigError("The 'storage' field must be an integer.")
-    if storage_value <= 0:
-        raise ProjectConfigError("The 'storage' field must be greater than zero.")
-
     return WalkAIProjectConfig(
         project_name=project_name,
         entrypoint=entrypoint.strip(),
         os_dependencies=tuple(dep.strip() for dep in os_dependencies),
         root=project_dir,
-        gpu=gpu,
         inputs=tuple(inputs),
-        storage=storage_value,
     )
