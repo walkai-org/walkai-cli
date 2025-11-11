@@ -76,6 +76,7 @@ walkai submit path/to/project --image my-api:latest
 ```
 
 Reads the WalkAI API credentials stored via `walkai config` and posts the image, GPU profile, and storage request from `[tool.walkai]`, submitting a new job. 
+Add `--secret name` (repeatable) to include secrets with the submission.
 
 ### Manage secrets
 

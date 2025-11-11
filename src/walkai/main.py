@@ -403,6 +403,12 @@ def submit(
         "-i",
         help="Container image to submit. Defaults to walkai/<project>:latest.",
     ),
+    secrets: list[str] = typer.Option(
+        [],
+        "--secret",
+        "-s",
+        help="Secret name to include with the submission. Repeat the option for multiple secrets.",
+    ),
 ) -> None:
     """Submit a job to the WalkAI API."""
 
@@ -445,6 +451,8 @@ def submit(
         "gpu": project.gpu,
         "storage": project.storage,
     }
+    if secrets:
+        payload["secret_names"] = secrets
 
     headers = {
         "Authorization": f"Bearer {walkai_api.pat}",

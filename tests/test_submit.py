@@ -97,6 +97,66 @@ def test_submit_invokes_walkai_api(
     assert captured["timeout"] == 30
 
 
+def test_submit_can_forward_secrets(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, isolated_config: Path
+) -> None:
+    project_dir = _create_project(tmp_path)
+
+    configuration.save_config(
+        WalkAIConfig(
+            walkai_api=WalkAIAPIConfig(
+                url="https://api.walkai.ai",
+                pat="pat-token",
+            ),
+        )
+    )
+
+    captured: dict[str, object] = {}
+
+    class DummyResponse:
+        def __init__(self) -> None:
+            self.status_code = 201
+            self.text = ""
+
+        def json(self) -> dict[str, object]:
+            return {"job_id": "job-123", "pod": "pod-name"}
+
+    def fake_post(
+        url: str,
+        *,
+        json: dict[str, object],  # noqa: A002 - matches httpx signature
+        headers: dict[str, str],
+        timeout: float,
+    ) -> DummyResponse:
+        captured["url"] = url
+        captured["json"] = json
+        captured["headers"] = headers
+        captured["timeout"] = timeout
+        return DummyResponse()
+
+    monkeypatch.setattr("walkai.main.httpx.post", fake_post)
+
+    result = runner.invoke(
+        app,
+        [
+            "submit",
+            str(project_dir),
+            "--secret",
+            "db-creds",
+            "--secret",
+            "api-token",
+        ],
+    )
+
+    assert result.exit_code == 0, result.stdout
+    assert captured["json"] == {
+        "image": "walkai/demo:latest",
+        "gpu": "1g.10gb",
+        "storage": 2,
+        "secret_names": ["db-creds", "api-token"],
+    }
+
+
 def test_submit_requires_api_credentials(tmp_path: Path, isolated_config: Path) -> None:
     project_dir = _create_project(tmp_path)
 
