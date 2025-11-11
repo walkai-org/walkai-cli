@@ -1,5 +1,9 @@
 """walkai CLI entry point implemented with Typer."""
 
+from __future__ import annotations
+
+import json
+from collections.abc import Sequence
 from pathlib import Path
 
 import httpx
@@ -17,12 +21,217 @@ from walkai.configuration import (
 )
 from walkai.project import ProjectConfigError, load_project_config
 from walkai.push import PushError, fetch_registry_credentials, push_image
+from walkai.secrets import (
+    SecretsError,
+    create_secret,
+    delete_secret,
+    get_secret,
+    list_secrets,
+    parse_env_file,
+)
 
 from . import __version__
 
 app = typer.Typer(
     help="Opinionated tooling to build and push Python apps for Kubernetes."
 )
+secrets_app = typer.Typer(help="Manage WalkAI secrets.")
+app.add_typer(secrets_app, name="secrets")
+
+
+def _load_api_config() -> WalkAIAPIConfig:
+    """Load the stored API configuration or exit with an error."""
+
+    try:
+        stored_config = load_config()
+    except ConfigError as exc:
+        typer.secho(str(exc), err=True, fg=typer.colors.RED)
+        raise typer.Exit(code=1) from exc
+
+    if stored_config is None:
+        typer.secho(
+            "No WalkAI configuration found. Run 'walkai config' first.",
+            err=True,
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(code=1)
+
+    return stored_config.walkai_api
+
+
+def _parse_inline_pairs(pairs: Sequence[str]) -> dict[str, str]:
+    """Parse KEY=VALUE pairs passed via the CLI."""
+
+    data: dict[str, str] = {}
+    for raw in pairs:
+        if "=" not in raw:
+            raise SecretsError(
+                f"Invalid --data value '{raw}'. Expected the format KEY=VALUE."
+            )
+        key, value = raw.split("=", 1)
+        key = key.strip()
+        if not key:
+            raise SecretsError("Secret data keys cannot be empty.")
+        data[key] = value
+
+    return data
+
+
+@secrets_app.command("list")
+def secrets_list(
+    json_output: bool = typer.Option(
+        False,
+        "--json",
+        help="Print the raw JSON payload from the API.",
+    ),
+) -> None:
+    """List the available secrets."""
+
+    walkai_api = _load_api_config()
+
+    try:
+        secrets = list_secrets(walkai_api)
+    except SecretsError as exc:
+        typer.secho(str(exc), err=True, fg=typer.colors.RED)
+        raise typer.Exit(code=1) from exc
+
+    if json_output:
+        typer.echo(json.dumps(secrets, indent=2))
+        return
+
+    if not secrets:
+        typer.secho("No secrets found.", fg=typer.colors.YELLOW)
+        return
+
+    typer.secho("Secrets:", fg=typer.colors.CYAN)
+    for entry in secrets:
+        typer.echo(f"- {entry['name']}")
+
+
+@secrets_app.command("get")
+def secrets_get(
+    name: str = typer.Argument(..., help="Name of the secret to retrieve."),
+    json_output: bool = typer.Option(
+        False,
+        "--json",
+        help="Print the raw JSON payload from the API.",
+    ),
+) -> None:
+    """Fetch a single secret."""
+
+    walkai_api = _load_api_config()
+
+    try:
+        secret = get_secret(walkai_api, name=name)
+    except SecretsError as exc:
+        typer.secho(str(exc), err=True, fg=typer.colors.RED)
+        raise typer.Exit(code=1) from exc
+
+    if json_output:
+        typer.echo(json.dumps(secret, indent=2))
+        return
+
+    typer.secho(f"Secret: {secret['name']}", fg=typer.colors.CYAN)
+    keys = secret.get("keys") or []
+
+    if not keys:
+        typer.secho("No keys found for this secret.", fg=typer.colors.YELLOW)
+        return
+
+    typer.echo("Keys:")
+    for key in keys:
+        typer.echo(f"- {key}")
+
+
+@secrets_app.command("create")
+def secrets_create(
+    name: str = typer.Argument(..., help="Name of the secret to create or update."),
+    env_file: Path | None = typer.Option(
+        None,
+        "--env-file",
+        "-f",
+        exists=True,
+        file_okay=True,
+        dir_okay=False,
+        readable=True,
+        resolve_path=True,
+        help="Path to a .env formatted file whose values will populate the secret.",
+    ),
+    data_pairs: list[str] = typer.Option(
+        [],
+        "--data",
+        "-d",
+        help="Inline KEY=VALUE pair to include in the secret. Repeat for multiple pairs.",
+        show_default=False,
+    ),
+) -> None:
+    """Create a secret from CLI key/value pairs or a .env file."""
+
+    walkai_api = _load_api_config()
+    merged: dict[str, str] = {}
+
+    if env_file is not None:
+        try:
+            file_data = parse_env_file(env_file)
+        except SecretsError as exc:
+            typer.secho(str(exc), err=True, fg=typer.colors.RED)
+            raise typer.Exit(code=1) from exc
+        merged.update(file_data)
+
+    try:
+        inline_data = _parse_inline_pairs(data_pairs)
+    except SecretsError as exc:
+        typer.secho(str(exc), err=True, fg=typer.colors.RED)
+        raise typer.Exit(code=1) from exc
+
+    merged.update(inline_data)
+
+    if not merged:
+        typer.secho(
+            "Secret data is empty. Provide --env-file or at least one --data option.",
+            err=True,
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(code=1)
+
+    try:
+        create_secret(walkai_api, name=name, data=merged)
+    except SecretsError as exc:
+        typer.secho(str(exc), err=True, fg=typer.colors.RED)
+        raise typer.Exit(code=1) from exc
+
+    typer.secho(f"Secret '{name}' saved.", fg=typer.colors.GREEN)
+
+
+@secrets_app.command("delete")
+def secrets_delete(
+    name: str = typer.Argument(..., help="Name of the secret to delete."),
+    yes: bool = typer.Option(
+        False,
+        "--yes",
+        "-y",
+        help="Skip the confirmation prompt.",
+    ),
+) -> None:
+    """Delete a secret by name."""
+
+    if not yes:
+        confirmed = typer.confirm(
+            f"Delete secret '{name}'? (y/n)", default=False, show_default=False
+        )
+        if not confirmed:
+            typer.echo("Aborted.")
+            raise typer.Exit()
+
+    walkai_api = _load_api_config()
+
+    try:
+        delete_secret(walkai_api, name=name)
+    except SecretsError as exc:
+        typer.secho(str(exc), err=True, fg=typer.colors.RED)
+        raise typer.Exit(code=1) from exc
+
+    typer.secho(f"Secret '{name}' deleted.", fg=typer.colors.GREEN)
 
 
 @app.command()
@@ -194,6 +403,12 @@ def submit(
         "-i",
         help="Container image to submit. Defaults to walkai/<project>:latest.",
     ),
+    secrets: list[str] = typer.Option(
+        [],
+        "--secret",
+        "-s",
+        help="Secret name to include with the submission. Repeat the option for multiple secrets.",
+    ),
 ) -> None:
     """Submit a job to the WalkAI API."""
 
@@ -236,6 +451,8 @@ def submit(
         "gpu": project.gpu,
         "storage": project.storage,
     }
+    if secrets:
+        payload["secret_names"] = secrets
 
     headers = {
         "Authorization": f"Bearer {walkai_api.pat}",
