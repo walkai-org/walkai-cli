@@ -409,6 +409,17 @@ def submit(
         "-s",
         help="Secret name to include with the submission. Repeat the option for multiple secrets.",
     ),
+    gpu: str = typer.Option(
+        ...,
+        "--gpu",
+        help="MIG profile string for the job (for example '1g.10gb').",
+    ),
+    storage: int = typer.Option(
+        ...,
+        "--storage",
+        min=1,
+        help="Requested storage (Gi) for the job.",
+    ),
 ) -> None:
     """Submit a job to the WalkAI API."""
 
@@ -417,14 +428,6 @@ def submit(
     except ProjectConfigError as exc:
         typer.secho(str(exc), err=True, fg=typer.colors.RED)
         raise typer.Exit(code=1) from exc
-
-    if project.gpu is None:
-        typer.secho(
-            "Project configuration must define [tool.walkai].gpu to submit a job.",
-            err=True,
-            fg=typer.colors.RED,
-        )
-        raise typer.Exit(code=1)
 
     try:
         cli_config = load_config()
@@ -446,10 +449,19 @@ def submit(
     endpoint = f"{base_url}/jobs/"
 
     resolved_image = image or project.default_image()
+    normalised_gpu = gpu.strip()
+    if not normalised_gpu:
+        typer.secho(
+            "The --gpu option must be a non-empty string.",
+            err=True,
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(code=1)
+
     payload = {
         "image": resolved_image,
-        "gpu": project.gpu,
-        "storage": project.storage,
+        "gpu": normalised_gpu,
+        "storage": storage,
     }
     if secrets:
         payload["secret_names"] = secrets

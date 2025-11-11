@@ -35,9 +35,9 @@ def _copy_project_sources(project: WalkAIProjectConfig, destination: Path) -> No
     }
 
     excluded_children: dict[Path, set[str]] = {}
-    for input_path in project.inputs:
+    for ignored_path in project.ignore:
         try:
-            relative = input_path.relative_to(project.root)
+            relative = ignored_path.relative_to(project.root)
         except ValueError:
             continue
         parent = relative.parent
