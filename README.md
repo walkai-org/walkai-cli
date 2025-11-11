@@ -76,3 +76,32 @@ walkai submit path/to/project --image my-api:latest
 ```
 
 Reads the WalkAI API credentials stored via `walkai config` and posts the image, GPU profile, and storage request from `[tool.walkai]`, submitting a new job. 
+
+### Manage secrets
+
+List the secrets currently stored in your WalkAI account:
+
+```bash
+walkai secrets list
+```
+
+Create or update a secret from a `.env` file or inline key/value pairs:
+
+```bash
+walkai secrets create prod-env --env-file .env
+walkai secrets create prod-env --data API_KEY=abc123 --data REGION=us-west1
+```
+
+Show the keys stored in a secret:
+
+```bash
+walkai secrets get prod-env
+```
+
+Delete a secret (confirmation required unless `--yes` is provided):
+
+```bash
+walkai secrets delete prod-env
+```
+
+`walkai secrets list --json` prints the raw API payload, which is useful for scripting.
