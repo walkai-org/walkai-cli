@@ -18,7 +18,7 @@ def project_factory(tmp_path: Path):
         name: str = "demo",
         entrypoint: str = "python main.py",
         os_dependencies: list[str] | None = None,
-        inputs: dict[str, str] | None = None,
+        ignore: dict[str, str] | None = None,
         gpu: str = "3g.40gb",
         storage: int = 1,
     ) -> Path:
@@ -38,15 +38,15 @@ def project_factory(tmp_path: Path):
             f"storage = {storage}",
         ]
 
-        if inputs:
-            inputs_literal = ", ".join(f'"{path}"' for path in inputs)
-            lines.append(f"inputs = [{inputs_literal}]")
+        if ignore:
+            ignore_literal = ", ".join(f'"{path}"' for path in ignore)
+            lines.append(f"ignore = [{ignore_literal}]")
 
         (project_dir / "pyproject.toml").write_text("\n".join(lines) + "\n")
         (project_dir / "main.py").write_text("print('hello from walkai')\n")
 
-        if inputs:
-            for relative_path, content in inputs.items():
+        if ignore:
+            for relative_path, content in ignore.items():
                 target = project_dir / relative_path
                 target.parent.mkdir(parents=True, exist_ok=True)
                 target.write_text(content)
@@ -131,10 +131,10 @@ def test_build_image_returns_custom_image(
     assert result == "custom/image:tag"
 
 
-def test_build_image_excludes_declared_inputs(
+def test_build_image_excludes_declared_ignore_paths(
     monkeypatch: pytest.MonkeyPatch, project_factory
 ) -> None:
-    project_dir = project_factory(inputs={"datasets/sample.txt": "data"})
+    project_dir = project_factory(ignore={"datasets/sample.txt": "data"})
     (project_dir / "other.txt").write_text("keep\n")
 
     def fake_run(cmd: list[str], *, check: bool) -> None:  # type: ignore[override]
@@ -142,7 +142,7 @@ def test_build_image_excludes_declared_inputs(
         build_path = Path(cmd[path_index])
         assert (build_path / "main.py").exists()
         assert not (build_path / "datasets" / "sample.txt").exists()
-        # Ensure non-input files remain
+        # Ensure non-ignored files remain
         assert (build_path / "other.txt").exists()
 
     monkeypatch.setattr(build.subprocess, "run", fake_run)

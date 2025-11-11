@@ -18,13 +18,13 @@ class WalkAIProjectConfig:
         entrypoint: str,
         os_dependencies: tuple[str, ...],
         root: Path,
-        inputs: tuple[Path, ...] = (),
+        ignore: tuple[Path, ...] = (),
     ):
         self.project_name = project_name
         self.entrypoint = entrypoint
         self.os_dependencies = os_dependencies
         self.root = root
-        self.inputs = inputs
+        self.ignore = ignore
 
     def default_image(self) -> str:
         """Return an opinionated default image name for the project."""
@@ -74,27 +74,27 @@ def load_project_config(project_dir: Path) -> WalkAIProjectConfig:
             "The 'os_dependencies' field must be a list of strings if provided."
         )
 
-    inputs_value = walkai_section.get("inputs", [])
-    inputs: list[Path] = []
-    if inputs_value:
-        if not isinstance(inputs_value, list) or not all(
-            isinstance(item, str) for item in inputs_value
+    ignore_value = walkai_section.get("ignore", [])
+    ignored_paths: list[Path] = []
+    if ignore_value:
+        if not isinstance(ignore_value, list) or not all(
+            isinstance(item, str) for item in ignore_value
         ):
             raise ProjectConfigError(
-                "The 'inputs' field must be a list of relative paths if provided."
+                "The 'ignore' field must be a list of relative paths if provided."
             )
-        for item in inputs_value:
+        for item in ignore_value:
             resolved = (project_dir / item).resolve()
             if not resolved.exists():
                 raise ProjectConfigError(
-                    f"Input path declared at {resolved} does not exist."
+                    f"Ignored path declared at {resolved} does not exist."
                 )
-            inputs.append(resolved)
+            ignored_paths.append(resolved)
 
     return WalkAIProjectConfig(
         project_name=project_name,
         entrypoint=entrypoint.strip(),
         os_dependencies=tuple(dep.strip() for dep in os_dependencies),
         root=project_dir,
-        inputs=tuple(inputs),
+        ignore=tuple(ignored_paths),
     )
