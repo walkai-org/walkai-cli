@@ -549,6 +549,12 @@ def submit(
         min=1,
         help="Requested storage (Gi) for the job.",
     ),
+    input_id: int | None = typer.Option(
+        None,
+        "--input",
+        min=1,
+        help="ID of an input volume to mount for the job.",
+    ),
 ) -> None:
     """Submit a job to the WalkAI API."""
 
@@ -587,6 +593,8 @@ def submit(
     }
     if secrets:
         payload["secret_names"] = secrets
+    if input_id is not None:
+        payload["input_id"] = input_id
 
     headers = {
         "Authorization": f"Bearer {walkai_api.pat}",
