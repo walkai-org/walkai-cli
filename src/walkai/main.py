@@ -19,6 +19,15 @@ from walkai.configuration import (
     load_config,
     save_config,
 )
+from walkai.inputs import (
+    InputError,
+    create_input_volume,
+    list_input_volumes,
+    list_volume_objects,
+    request_input_upload_urls,
+    upload_files_to_presigned,
+)
+from walkai.project import ProjectConfigError, load_project_config
 from walkai.push import PushError, fetch_registry_credentials, push_image
 from walkai.secrets import (
     SecretsError,
@@ -36,6 +45,8 @@ app = typer.Typer(
 )
 secrets_app = typer.Typer(help="Manage WalkAI secrets.")
 app.add_typer(secrets_app, name="secrets")
+inputs_app = typer.Typer(help="Manage WalkAI input volumes.")
+app.add_typer(inputs_app, name="input")
 
 
 def _load_api_config() -> WalkAIAPIConfig:
@@ -233,6 +244,125 @@ def secrets_delete(
     typer.secho(f"Secret '{name}' deleted.", fg=typer.colors.GREEN)
 
 
+@inputs_app.command("list")
+def inputs_list(
+    json_output: bool = typer.Option(
+        False,
+        "--json",
+        help="Print the raw JSON payload from the API.",
+    ),
+) -> None:
+    """List available input volumes."""
+
+    walkai_api = _load_api_config()
+
+    try:
+        volumes = list_input_volumes(walkai_api)
+    except InputError as exc:
+        typer.secho(str(exc), err=True, fg=typer.colors.RED)
+        raise typer.Exit(code=1) from exc
+
+    if json_output:
+        typer.echo(json.dumps(volumes, indent=2))
+        return
+
+    if not volumes:
+        typer.secho("No input volumes found.", fg=typer.colors.YELLOW)
+        return
+
+    typer.secho("Input volumes:", fg=typer.colors.CYAN)
+    for volume in volumes:
+        typer.echo(f"- {volume['id']}: {volume['name']} (size: {volume['size']})")
+
+
+@inputs_app.command("get")
+def inputs_get(
+    volume_id: int = typer.Argument(..., help="ID of the input volume to inspect."),
+    json_output: bool = typer.Option(
+        False,
+        "--json",
+        help="Print the raw JSON payload from the API.",
+    ),
+) -> None:
+    """List the objects stored in an input volume."""
+
+    walkai_api = _load_api_config()
+
+    try:
+        objects = list_volume_objects(walkai_api, volume_id=volume_id)
+    except InputError as exc:
+        typer.secho(str(exc), err=True, fg=typer.colors.RED)
+        raise typer.Exit(code=1) from exc
+
+    if json_output:
+        typer.echo(json.dumps(objects, indent=2))
+        return
+
+    if not objects:
+        typer.secho(f"No objects found in volume {volume_id}.", fg=typer.colors.YELLOW)
+        return
+
+    typer.secho(f"Objects in volume {volume_id}:", fg=typer.colors.CYAN)
+    for obj in objects:
+        size_suffix = ""
+        if obj.get("size") is not None:
+            size_suffix = f" ({obj['size']} bytes)"
+        typer.echo(f"- {obj['key']}{size_suffix}")
+
+
+@inputs_app.command("create")
+def inputs_create(
+    size: int = typer.Option(
+        ...,
+        "--size",
+        "-s",
+        min=1,
+        help="Storage size in Gi for the input volume.",
+    ),
+    files: list[Path] = typer.Option(
+        [],
+        "--file",
+        "-f",
+        exists=True,
+        file_okay=True,
+        dir_okay=False,
+        readable=True,
+        resolve_path=True,
+        show_default=False,
+        help="Path to a file to upload. Repeat for multiple files.",
+    ),
+) -> None:
+    """Create an input volume and upload one or more files to it."""
+
+    if not files:
+        typer.secho(
+            "At least one --file must be provided.",
+            err=True,
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(code=1)
+
+    walkai_api = _load_api_config()
+
+    try:
+        volume = create_input_volume(walkai_api, size=size)
+        filenames = [path.name for path in files]
+        upload_urls = request_input_upload_urls(
+            walkai_api, volume_id=volume["id"], filenames=filenames
+        )
+        if len(upload_urls) != len(files):
+            raise InputError("Received a different number of upload URLs than files.")
+        upload_files_to_presigned(upload_urls, files)
+    except InputError as exc:
+        typer.secho(str(exc), err=True, fg=typer.colors.RED)
+        raise typer.Exit(code=1) from exc
+
+    typer.secho(
+        f"Created input volume {volume['id']} and uploaded {len(files)} file(s).",
+        fg=typer.colors.GREEN,
+    )
+
+
 @app.command()
 def version() -> None:
     """Print the version"""
@@ -419,6 +549,12 @@ def submit(
         min=1,
         help="Requested storage (Gi) for the job.",
     ),
+    input_id: int | None = typer.Option(
+        None,
+        "--input",
+        min=1,
+        help="ID of an input volume to mount for the job.",
+    ),
 ) -> None:
     """Submit a job to the WalkAI API."""
 
@@ -457,6 +593,8 @@ def submit(
     }
     if secrets:
         payload["secret_names"] = secrets
+    if input_id is not None:
+        payload["input_id"] = input_id
 
     headers = {
         "Authorization": f"Bearer {walkai_api.pat}",

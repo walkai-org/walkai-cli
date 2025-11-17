@@ -228,6 +228,61 @@ def test_submit_does_not_require_pyproject(
     assert captured["json"]["image"] == "walkai/no-config:latest"
 
 
+def test_submit_can_forward_input_id(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, isolated_config: Path
+) -> None:
+    project_dir = _create_project(tmp_path)
+
+    configuration.save_config(
+        WalkAIConfig(
+            walkai_api=WalkAIAPIConfig(
+                url="https://api.walkai.ai",
+                pat="pat-token",
+            ),
+        )
+    )
+
+    captured: dict[str, object] = {}
+
+    class DummyResponse:
+        def __init__(self) -> None:
+            self.status_code = 201
+            self.text = ""
+
+        def json(self) -> dict[str, object]:
+            return {"job_id": "job-123", "pod": "pod-name"}
+
+    def fake_post(
+        url: str,
+        *,
+        json: dict[str, object],  # noqa: A002 - matches httpx signature
+        headers: dict[str, str],
+        timeout: float,
+    ) -> DummyResponse:
+        captured["json"] = json
+        return DummyResponse()
+
+    monkeypatch.setattr("walkai.main.httpx.post", fake_post)
+
+    result = runner.invoke(
+        app,
+        [
+            "submit",
+            "--image",
+            "ghcr.io/fake-image/image",
+            "--gpu",
+            "1g.10gb",
+            "--storage",
+            "2",
+            "--input",
+            "7",
+        ],
+    )
+
+    assert result.exit_code == 0, result.stderr
+    assert captured["json"]["input_id"] == 7
+
+
 def test_submit_requires_api_credentials(tmp_path: Path, isolated_config: Path) -> None:
     project_dir = _create_project(tmp_path)
 

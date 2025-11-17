@@ -71,7 +71,7 @@ You can use this command to push any container image, not just the ones built wi
 walkai submit path/to/project --image my-api:latest --gpu 1g.10gb --storage 5
 ```
 
-Reads the WalkAI API credentials stored via `walkai config`, posts the provided image, and forwards the `--gpu`/`--storage` values to the WalkAI API, submitting a new job. Add `--secret name` (repeatable) to include secrets with the submission.
+Reads the WalkAI API credentials stored via `walkai config`, posts the provided image, and forwards the `--gpu`/`--storage` values to the WalkAI API, submitting a new job. Add `--secret name` (repeatable) to include secrets with the submission. Add `--input <id>` to attach an input volume.
 
 ### Manage secrets
 
@@ -101,3 +101,25 @@ walkai secrets delete prod-env
 ```
 
 `walkai secrets list --json` prints the raw API payload, which is useful for scripting.
+
+### Manage input volumes
+
+List input volumes (id, name, size):
+
+```bash
+walkai input list
+```
+
+Create a new input volume and upload files:
+
+```bash
+walkai input create --size 5 --file path/to/file1 --file path/to/file2
+```
+
+List the objects stored in a specific input volume:
+
+```bash
+walkai input get 141
+```
+
+Add `--json` to either command to print the underlying API response instead of the formatted output.
