@@ -151,6 +151,8 @@ def test_submit_can_forward_secrets(
         [
             "submit",
             str(project_dir),
+            "--image",
+            "walkai/demo:latest",
             "--secret",
             "db-creds",
             "--secret",
@@ -171,6 +173,61 @@ def test_submit_can_forward_secrets(
     }
 
 
+def test_submit_does_not_require_pyproject(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, isolated_config: Path
+) -> None:
+    project_dir = tmp_path / "no-config"
+    project_dir.mkdir()
+
+    configuration.save_config(
+        WalkAIConfig(
+            walkai_api=WalkAIAPIConfig(
+                url="https://api.walkai.ai",
+                pat="pat-token",
+            ),
+        )
+    )
+
+    captured: dict[str, object] = {}
+
+    class DummyResponse:
+        def __init__(self) -> None:
+            self.status_code = 201
+            self.text = ""
+
+        def json(self) -> dict[str, object]:
+            return {"job_id": "job-456", "pod": "podless"}
+
+    def fake_post(
+        url: str,
+        *,
+        json: dict[str, object],  # noqa: A002 - matches httpx signature
+        headers: dict[str, str],
+        timeout: float,
+    ) -> DummyResponse:
+        captured["json"] = json
+        return DummyResponse()
+
+    monkeypatch.setattr("walkai.main.httpx.post", fake_post)
+
+    result = runner.invoke(
+        app,
+        [
+            "submit",
+            str(project_dir),
+            "--image",
+            "walkai/no-config:latest",
+            "--gpu",
+            "1g.10gb",
+            "--storage",
+            "2",
+        ],
+    )
+
+    assert result.exit_code == 0, result.stdout
+    assert captured["json"]["image"] == "walkai/no-config:latest"
+
+
 def test_submit_requires_api_credentials(tmp_path: Path, isolated_config: Path) -> None:
     project_dir = _create_project(tmp_path)
 
@@ -179,6 +236,8 @@ def test_submit_requires_api_credentials(tmp_path: Path, isolated_config: Path) 
         [
             "submit",
             str(project_dir),
+            "--image",
+            "walkai/demo:latest",
             "--gpu",
             "1g.10gb",
             "--storage",
@@ -198,6 +257,8 @@ def test_submit_requires_gpu_option(tmp_path: Path, isolated_config: Path) -> No
         [
             "submit",
             str(project_dir),
+            "--image",
+            "walkai/demo:latest",
             "--storage",
             "2",
         ],
@@ -215,6 +276,8 @@ def test_submit_requires_storage_option(tmp_path: Path, isolated_config: Path) -
         [
             "submit",
             str(project_dir),
+            "--image",
+            "walkai/demo:latest",
             "--gpu",
             "1g.10gb",
         ],

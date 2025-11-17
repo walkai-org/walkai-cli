@@ -19,7 +19,6 @@ from walkai.configuration import (
     load_config,
     save_config,
 )
-from walkai.project import ProjectConfigError, load_project_config
 from walkai.push import PushError, fetch_registry_credentials, push_image
 from walkai.secrets import (
     SecretsError,
@@ -395,13 +394,13 @@ def submit(
         file_okay=False,
         readable=True,
         resolve_path=True,
-        help="Project directory containing a pyproject.toml with tool.walkai settings.",
+        help="Project directory used for packaging the submission.",
     ),
-    image: str | None = typer.Option(
-        None,
+    image: str = typer.Option(
+        ...,
         "--image",
         "-i",
-        help="Container image to submit. Defaults to walkai/<project>:latest.",
+        help="Container image to submit.",
     ),
     secrets: list[str] = typer.Option(
         [],
@@ -424,12 +423,6 @@ def submit(
     """Submit a job to the WalkAI API."""
 
     try:
-        project = load_project_config(path)
-    except ProjectConfigError as exc:
-        typer.secho(str(exc), err=True, fg=typer.colors.RED)
-        raise typer.Exit(code=1) from exc
-
-    try:
         cli_config = load_config()
     except ConfigError as exc:
         typer.secho(str(exc), err=True, fg=typer.colors.RED)
@@ -448,7 +441,6 @@ def submit(
     base_url = walkai_api.url.rstrip("/")
     endpoint = f"{base_url}/jobs/"
 
-    resolved_image = image or project.default_image()
     normalised_gpu = gpu.strip()
     if not normalised_gpu:
         typer.secho(
@@ -459,7 +451,7 @@ def submit(
         raise typer.Exit(code=1)
 
     payload = {
-        "image": resolved_image,
+        "image": image,
         "gpu": normalised_gpu,
         "storage": storage,
     }
