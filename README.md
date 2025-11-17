@@ -101,3 +101,25 @@ walkai secrets delete prod-env
 ```
 
 `walkai secrets list --json` prints the raw API payload, which is useful for scripting.
+
+### Manage input volumes
+
+List input volumes (id, name, size):
+
+```bash
+walkai input list
+```
+
+Create a new input volume and upload files:
+
+```bash
+walkai input create --size 5 --file path/to/file1 --file path/to/file2
+```
+
+List the objects stored in a specific input volume:
+
+```bash
+walkai input get 141
+```
+
+Add `--json` to either command to print the underlying API response instead of the formatted output.
