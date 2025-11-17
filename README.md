@@ -71,7 +71,7 @@ You can use this command to push any container image, not just the ones built wi
 walkai submit path/to/project --image my-api:latest --gpu 1g.10gb --storage 5
 ```
 
-Reads the WalkAI API credentials stored via `walkai config`, posts the image (defaulting to `walkai/<project>:latest`), and forwards the `--gpu`/`--storage` values to the WalkAI API, submitting a new job. Add `--secret name` (repeatable) to include secrets with the submission.
+Reads the WalkAI API credentials stored via `walkai config`, posts the provided image, and forwards the `--gpu`/`--storage` values to the WalkAI API, submitting a new job. Add `--secret name` (repeatable) to include secrets with the submission.
 
 ### Manage secrets
 
